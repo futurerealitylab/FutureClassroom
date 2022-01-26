@@ -28,7 +28,7 @@ then go to http://localhost:8000
 # How to debug in VR
 
 1. On your Oculus app, go to *Devices*, select your headset from the device list and wait for it to connect.Then select *Developer Mode* and turn on *Developer Mode*.
-2. Connect your quest with your computer using a cable.
+2. Connect your quest with your computer using our Oculus Quest cable.
 3. Go to chrome://inspect#devices on your computer
 4. Go to your VR headset and accept *Allow USB Debugging* when prompted on the headset
 5. On the chrome://inspect#devices on your computer, you should be able to see your device under the *Remote Target* and its active programs. You can then inspect the *2022 VR Class* window on your computer.
