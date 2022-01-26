@@ -32,4 +32,4 @@ then go to http://localhost:8000
 2. Change the name and the content of the demo to whatever you like!
 3. Go to [scenes.js](https://github.com/futurerealitylab/FutureClassroom/tree/master/js/scenes/scenes.js) and import your demo there.
 4. Go to the buttom of that file and add your demo's name to the [```window.demoNames```](https://github.com/futurerealitylab/FutureClassroom/tree/master/js/scenes/scenes.js#L51). This will generate a button and a boolean called **demo*YourDemoName*State** for you. Every time you click the button, the boolean will reverse its value. If you have more than one demos, seperate their names with ```,```
-e. Using that boolean, you can load and stop your demo by clicking button similar to [how we display the demoCube](https://github.com/futurerealitylab/FutureClassroom/tree/master/js/scenes/scenes.js#L16)
+5. Using that boolean, you can load and stop your demo by clicking button similar to [how we display the demoCube](https://github.com/futurerealitylab/FutureClassroom/tree/master/js/scenes/scenes.js#L16)
