@@ -1,6 +1,6 @@
-# FutureCouncil
+# FutureClassroom
 
-Expeditions in Experiential Computing
+Software for 2022 VR class
 
 # How to setup environment
 
@@ -12,10 +12,14 @@ install python3 if you haven't
 
 `python run.py`
 
-go to http://localhost:8000
+then go to http://localhost:8000
 
-# Manual
-[To develop](https://github.com/snowymo/immersive-presentation/wiki)
+# How to run in VR
 
-[To test before merge](https://github.com/snowymo/immersive-presentation/wiki/Unit-Test)
+1. Run the program locally on your compurer
+2. Open Google Chrome browser on your VR headset
+3. Go to chrome://flags/
+4. Search: "Insecure origins treated as secure" and enable the flag
+5. Add http://the-ip-address-running-the-futureClassroom-program:8000 to the text box
+6. Relunch the brower on your VR headset and go to http://the-ip-address-running-the-futureClassroom-program:8000 
 
