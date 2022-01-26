@@ -4,7 +4,7 @@ let DemoCube = function() {
       this.start = true;
       this.name = "cube";
       clay.model.move(0,1.5,0).scale(0.2);
-      this.cube = clay.model.add('cube').blend(false).color(1,1,1).texture('media/textures/brick.png');
+      this.cube = clay.model.add('cube').color(1,1,1).texture('media/textures/brick.png');
    }
 
    this.display = () => {

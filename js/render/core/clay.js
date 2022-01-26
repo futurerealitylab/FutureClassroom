@@ -2871,7 +2871,7 @@ function Node(_form) {
       this.texture  = src     => { this._texture = src;  return this; }
       this.bevel    = tf      => { this._bevel = tf === undefined ? true : tf; return this; }
       this.blend    = tf      => { if (this._blend != tf) activeSet(true);
-                                   this._blend = tf === undefined ? true : tf; return this; }
+                                   this._blend = tf === undefined ? false : tf; return this; }
       this.melt     = tf      => { this._melt  = tf === undefined ? true : tf; return this; }
       this.precision = value   => { this._precision = value; return this; }
       this.render = pm => {
