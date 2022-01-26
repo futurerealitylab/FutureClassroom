@@ -105,7 +105,7 @@ const handleRequest = function (request, response) {
         response.end(fs.readFileSync(request.url));
     } else if (request.url == "/") {
         response.writeHead(200, { "Content-Type": "text/html" });
-        response.end(fs.readFileSync("./sig21.html"));
+        response.end(fs.readFileSync("./index.html"));
     } else {
         if (!request.url.startsWith(".")) {
             request.url = "." + request.url;

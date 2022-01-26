@@ -1,7 +1,7 @@
 {
   "name": "immersive-presentation",
   "version": "1.0.0",
-  "description": "prototype for sig21",
+  "description": "2022 VR Class",
   "main": "server.js",
   "directories": {
     "test": "tests"
