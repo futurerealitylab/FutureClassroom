@@ -1,7 +1,7 @@
 import { Gltf2Node } from "../render/nodes/gltf2.js";
 import { demoCube } from "./demoCube.js";
 
-let currentModel = null;
+let currentDemo = null;
 let loadGLTF = false;
 let defaultBackground = "./media/gltf/60_fifth_ave/60_fifth_ave.gltf";
 
@@ -13,25 +13,25 @@ export let scenes = function () {
         loadGLTF = true;
       }
 
-    if (demoDemoCubeState % 2) loadModel(demoCube); else stopModel(demoCube);
+    if (demoDemoCubeState % 2) loadDemo(demoCube); else stopDemo(demoCube);
 }
 
-function loadModel(model) {
-  if(!model.start) {
-      // default : remove all the previous models when starting a new one
-      // might be useful to change this into something else if want to show more models at once
+function loadDemo(demo) {
+  if(!demo.start) {
+      // default : remove all the previous demos when starting a new one
+      // might be useful to change this into something else if want to show more demos at once
       clay.model.clear(); 
-      model.init(clay);
-      currentModel = model;
+      demo.init(clay.model);
+      currentDemo = demo;
   } 
-  model.display();
+  demo.display();
 }
 
-function stopModel(model) {
-    model.start = false;
-    if(currentModel == model) {
+function stopDemo(demo) {
+  demo.start = false;
+    if(currentDemo == demo) {
         clay.model.clear();
-        currentModel = null;
+        currentDemo = null;
     }
 }
 
