@@ -62,7 +62,7 @@ window.webrtc_start = function () {
     return;
   }
 
-  console.log("window.webrtcInit", window.webrtcInit);
+  console.log("webrtc initialized");
 
   window.webrtcInit = true;
   window.localUuid = window.avatars[window.playerid].localUuid;
@@ -110,7 +110,6 @@ window.webrtc_start = function () {
           dest: "all",
         });
         corelink.send(metaroomWebrtcSender, msg);
-        console.log("corelink.send", msg);
       })
       .catch(errorHandler);
   } else {

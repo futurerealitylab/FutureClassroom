@@ -1018,6 +1018,10 @@ function ImplicitSurface() {
    // FINAL PREPARATION FOR BLOBBY RENDERING FOR THIS ANIMATION FRAME
 
    this.endBlobs = () => {
+      if (blobMatrices.length == 0) {
+         return;
+      }
+
       if (! mesh) {
          mesh = blobs.implicitSurfaceTriangleMesh(divs, isFaceted, textureState, textureSrc);
 

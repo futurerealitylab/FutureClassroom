@@ -30,7 +30,6 @@ export function updateObject(objectID) {
     //     });
     var msg = corelink_message("object", window.objects[objectID].toJson());
     corelink.send(metaroomSyncSender, msg);
-    console.log("corelink.send", msg);
 }
 
 export class SyncObject {
@@ -70,5 +69,4 @@ window.syncDemos = function () {
     });
     var msg = corelink_message("demo", flags);
     corelink.send(metaroomSyncSender, msg);
-    console.log("corelink.send", msg);
 }
