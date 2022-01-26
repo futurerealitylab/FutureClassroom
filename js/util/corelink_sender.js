@@ -54,7 +54,7 @@ export function corelink_message(type, data) {
                     ts: Date.now(),
                 };
             }
-            console.log("send webrtc", message);
+            // console.log("send webrtc", message);
             break;
         case "object":
             {
@@ -66,7 +66,7 @@ export function corelink_message(type, data) {
                     state: data,
                 };
             }
-            console.log("corelink.send object", message);
+            //console.log("corelink.send object", message);
             break;
         case "objectInit":
             {
@@ -95,7 +95,7 @@ export function corelink_message(type, data) {
                     state: data,
                 };
             }
-            console.log("corelink.send mute", message);
+            //console.log("corelink.send mute", message);
             break;
         case "demo":
             message = {

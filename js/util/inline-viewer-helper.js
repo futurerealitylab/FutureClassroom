@@ -54,7 +54,9 @@ export class InlineViewerHelper {
       if (event.buttons & 1) {
         if(window.interactMode == 0) this.rotateView(event.movementX, event.movementY);
       }
-      window.webrtc_start();
+      if (window.webrtc_start != undefined) {
+        window.webrtc_start();
+      }
     });
 
     // Keep track of touch-related state so that users can touch and drag on

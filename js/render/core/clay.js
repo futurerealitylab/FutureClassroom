@@ -296,8 +296,10 @@ let drawMesh = (mesh, materialId, isTriangleMesh, textureSrc) => {
    setUniform('1i', 'uSampler', 0);                            // SPECIFY TEXTURE INDEX.
    setUniform('1f', 'uTexture', isTexture(textureSrc)? 1 : 0); // ARE WE RENDERING A TEXTURE?
 
-   gl.bufferData(gl.ARRAY_BUFFER, mesh, gl.STATIC_DRAW);
-   if(mesh) gl.drawArrays(isTriangleMesh ? gl.TRIANGLES : gl.TRIANGLE_STRIP, 0, mesh.length / VERTEX_SIZE);
+   if (mesh.length > 0) {
+      gl.bufferData(gl.ARRAY_BUFFER, mesh, gl.STATIC_DRAW);
+      if(mesh) gl.drawArrays(isTriangleMesh ? gl.TRIANGLES : gl.TRIANGLE_STRIP, 0, mesh.length / VERTEX_SIZE);
+   }
 }
 
 
@@ -1016,6 +1018,10 @@ function ImplicitSurface() {
    // FINAL PREPARATION FOR BLOBBY RENDERING FOR THIS ANIMATION FRAME
 
    this.endBlobs = () => {
+      if (blobMatrices.length == 0) {
+         return;
+      }
+
       if (! mesh) {
          mesh = blobs.implicitSurfaceTriangleMesh(divs, isFaceted, textureState, textureSrc);
 

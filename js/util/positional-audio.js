@@ -144,7 +144,6 @@ export function updateAudioNodes(scene) {
             let scale = getLoudnessScale(source.analyser);
             mat4.scale(mymatrix, mymatrix, [scale, scale, scale]);
             initObject("stereo", mymatrix, window.envObjID++); // 0 means for environment
-            console.log("init object", window.envObjID);
         }
 
         let node = source.node;

@@ -57,9 +57,12 @@ function setUserMediaVariable() {
 }
 
 window.webrtc_start = function () {
-  console.log("window.webrtcInit", window.webrtcInit);
-  if (window.webrtcInit)
+  
+  if (window.webrtcInit) {
     return;
+  }
+
+  console.log("webrtc initialized");
 
   window.webrtcInit = true;
   window.localUuid = window.avatars[window.playerid].localUuid;
@@ -107,7 +110,6 @@ window.webrtc_start = function () {
           dest: "all",
         });
         corelink.send(metaroomWebrtcSender, msg);
-        console.log("corelink.send", msg);
       })
       .catch(errorHandler);
   } else {
