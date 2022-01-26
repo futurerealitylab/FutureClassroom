@@ -22,9 +22,8 @@ then go to http://localhost:8000
 2. Open Google Chrome browser on your VR headset
 3. Go to chrome://flags/
 4. Search: ***"Insecure origins treated as secure"*** and enable the flag
-5. Add http://[your-computer's-ip-address]:8000 to the text box
-   for example: http://10.19.127.1:8000
-6. Relunch the brower on your VR headset and go to http://[your-computer's-ip-address]:8000 
+5. Add http://[your-computer's-ip-address]:8000 to the text box. For example: http://10.19.127.1:8000
+7. Relunch the brower on your VR headset and go to http://[your-computer's-ip-address]:8000 
 
 # How to create your own demo
 
