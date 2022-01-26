@@ -1,5 +1,5 @@
 "use strict";
-import { clayModels } from "./clayModels/clayScene.js";
+import { scenes } from "../../scenes/scenes.js";
 
 export function Clay(gl, canvas) {
    let clayPgm = function () {
@@ -1404,7 +1404,7 @@ let S = [], vm, vmi, computeQuadric, activeSet, implicitSurface;
    this.animate = gl => {
       this.updatePgm();
       this.model = model;
-      if(window.clay) clayModels();
+      if(window.clay) scenes();
       // if (html.bgWindow)
       //    html.bgWindow.style.left = flash ? -screen.width : 0;
 

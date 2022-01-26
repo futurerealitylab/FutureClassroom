@@ -1,11 +1,11 @@
-import { Gltf2Node } from "../../nodes/gltf2.js";
+import { Gltf2Node } from "../render/nodes/gltf2.js";
 import { demoCube } from "./demoCube.js";
 
 let currentModel = null;
 let loadGLTF = false;
 let defaultBackground = "./media/gltf/60_fifth_ave/60_fifth_ave.gltf";
 
-export let clayModels = function () {
+export let scenes = function () {
 
     if (!loadGLTF) {
         window.scene.addNode(new Gltf2Node({ url: defaultBackground })).name =
