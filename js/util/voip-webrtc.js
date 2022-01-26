@@ -57,9 +57,12 @@ function setUserMediaVariable() {
 }
 
 window.webrtc_start = function () {
-  console.log("window.webrtcInit", window.webrtcInit);
-  if (window.webrtcInit)
+  
+  if (window.webrtcInit) {
     return;
+  }
+
+  console.log("window.webrtcInit", window.webrtcInit);
 
   window.webrtcInit = true;
   window.localUuid = window.avatars[window.playerid].localUuid;
