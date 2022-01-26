@@ -12,7 +12,7 @@ install python3 if you haven't
 
 `python run.py`
 
-go to http://localhost:8000/sig21.html
+go to http://localhost:8000
 
 # Manual
 [To develop](https://github.com/snowymo/immersive-presentation/wiki)
