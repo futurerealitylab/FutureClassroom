@@ -1462,7 +1462,7 @@ let S = [], vm, vmi, computeQuadric, activeSet, implicitSurface;
    
       setUniform('1f', 'uOpacity', 1);
       let r3 = Math.sqrt(1/3);
-      setUniform('3fv', 'uLDir', [r3,r3,r3, -r3,-r3,-r3]);              // SET GPU LIGHTS
+      setUniform('3fv', 'uLDir', [r3,r3,-r3, -r3,-r3,r3]);              // SET GPU LIGHTS
       setUniform('3fv', 'uLCol', [.6,.8,1, .4,.3,.2]);
 
       // HANDLE EXPERIMENTS
@@ -2815,6 +2815,10 @@ function Node(_form) {
  this._controlActions = {};
  implicitSurface.remesh();
  return this;
+   }
+
+   this.setMatrix = mat => {
+      m.setValue(mat);
    }
 
    this.clear();

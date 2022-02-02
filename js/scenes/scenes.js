@@ -1,5 +1,5 @@
 import { Gltf2Node } from "../render/nodes/gltf2.js";
-import { demoCube } from "./demoCube.js";
+import { demoController } from "./demoController.js";
 
 let currentDemo = null;
 let loadGLTF = false;
@@ -13,7 +13,7 @@ export let scenes = function () {
         loadGLTF = true;
       }
 
-    if (demoDemoCubeState % 2) loadDemo(demoCube); else stopDemo(demoCube);
+    if (demoDemoControllerState % 2) loadDemo(demoController); else stopDemo(demoController);
 }
 
 function loadDemo(demo) {
@@ -48,6 +48,6 @@ function showNameTag() {
     }
   }
 
-window.demoNames = "DemoCube";
+window.demoNames = "DemoController";
 addDemoButtons(window.demoNames);
 window.addNameField();

@@ -27,7 +27,7 @@ import { Clay } from "./render/core/clay.js";
 
 window.wsport = 8447;
 window.vr = false;
-window.interactMode = 0;
+window.interactMode = 1;
 window.model = 0;
 
 // If requested, use the polyfill to provide support for mobile devices
@@ -250,7 +250,7 @@ function updateInputSources(session, frame, refSpace) {
                     inputSource.handedness
                 ); // let controller = this._controllers[handedness]; // so it is updating actually
                 // ZH: update location
-                if (window.playerid) {
+                // if (window.playerid) {
                     if (inputSource.handedness == "left") {
                         window.avatars[window.playerid].leftController.position =
                             gripPose.transform.position;
@@ -266,7 +266,7 @@ function updateInputSources(session, frame, refSpace) {
                         window.avatars[window.playerid].rightController.matrix =
                             gripPose.transform.matrix;
                     }
-                }
+                // }
             }
         }
         let headPose = frame.getViewerPose(refSpace);
@@ -410,7 +410,7 @@ function onXRFrame(t, frame) {
     // ZH: save previous "source.gamepad.buttons" for two controllers,
     // check if changes per frame
     // send to the server if changes
-    if (window.playerid) {
+    // if (window.playerid) {
         const thisAvatar = window.avatars[window.playerid];
         for (let source of session.inputSources) {
             if (source.handedness && source.gamepad) {
@@ -420,7 +420,7 @@ function onXRFrame(t, frame) {
                 });
             }
         }
-    }
+    // }
 
     if (refSpace == inlineViewerHelper.referenceSpace) {
         inlineViewerHelper.update();
