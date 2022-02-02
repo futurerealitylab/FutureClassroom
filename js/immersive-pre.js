@@ -254,10 +254,12 @@ function updateInputSources(session, frame, refSpace) {
                     if (inputSource.handedness == "left") {
                         window.avatars[window.playerid].leftController.position =
                             gripPose.transform.position;
+                            console.log(gripPose.transform.position)
                         window.avatars[window.playerid].leftController.orientation =
                             gripPose.transform.orientation;
                         window.avatars[window.playerid].leftController.matrix =
                             gripPose.transform.matrix;
+                            console.log(gripPose.transform.matrix)
                     } else if (inputSource.handedness == "right") {
                         window.avatars[window.playerid].rightController.position =
                             gripPose.transform.position;
