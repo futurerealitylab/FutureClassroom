@@ -22,6 +22,7 @@ export function Clay(gl, canvas) {
    let time;
    let uvToForm;
    let justPressed = false;
+   let enableModeling = false;
 
 
 //////////////////////////////////////////////////////////////////////////////////////////////
@@ -1168,7 +1169,7 @@ let onKeyUp = event => {
       return;
    }
 
-   if(false) { // Disabled clay modeling functions for now
+   if(enableModeling) { // Disabled clay modeling functions for now
       switch (event.key) {
          case 'Escape':
             modeler.setShowingCode(false);
