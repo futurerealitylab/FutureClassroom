@@ -22,9 +22,16 @@ then go to http://localhost:8000
 2. Open Google Chrome browser on your VR headset
 3. Go to chrome://flags/
 4. Search: ***"Insecure origins treated as secure"*** and enable the flag
-5. Add http://[your-computer's-ip-address]:8000 to the text box
-   for example: http://10.19.127.1:8000
-6. Relunch the brower on your VR headset and go to http://[your-computer's-ip-address]:8000 
+5. Add http://[your-computer's-ip-address]:8000 to the text box. For example: http://10.19.127.1:8000
+7. Relunch the brower on your VR headset and go to http://[your-computer's-ip-address]:8000 
+
+# How to debug in VR
+
+1. On your Oculus app, go to *Devices*, select your headset from the device list and wait for it to connect.Then select *Developer Mode* and turn on *Developer Mode*.
+2. Connect your quest with your computer using your Oculus Quest cable.
+3. Go to chrome://inspect#devices on your computer
+4. Go to your VR headset and accept *Allow USB Debugging* when prompted on the headset
+5. On the chrome://inspect#devices on your computer, you should be able to see your device under the *Remote Target* and its active programs. You can then inspect the *2022 VR Class* window on your computer.
 
 # How to create your own demo
 
