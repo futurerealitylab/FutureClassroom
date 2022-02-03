@@ -1169,7 +1169,7 @@ let onKeyUp = event => {
       return;
    }
 
-   if(enableModeling) { // Disabled clay modeling functions for now
+   if(enableModeling) {
       switch (event.key) {
          case 'Escape':
             modeler.setShowingCode(false);
@@ -2505,295 +2505,302 @@ let S = [], vm, vmi, computeQuadric, activeSet, implicitSurface,
       let ch = String.fromCharCode(key);
       keyChar = ch;
 
-      // TYPE 0-9 TO SET BLOB COLOR
-
-      if (S.length > 0 && ch >= '0' && ch <= '9') {
-         saveForUndo();
-         let color = 'color' + (key - 48) + (isLightColor ? 'l' : '');
-
-         // SET COLOR OVER BACKGROUND TO COLOR ALL UNCOLORED BLOBS.
-
-         if (mn < 0) {
-            defaultColor = color;
-            for (let n = 0 ; n < S.length ; n++)
-               if (! S[n].isColored)
-                  S[n].color = defaultColor;
-         }
-
-         // SET COLOR OVER A BLOB TO EXPLICITLY COLOR IT.
-
-         else {
-            let sym = S[ns()].symmetry ? 1 : 0;
-            for (let i = 0 ; i <= sym ; i++) {
-               S[I(ns())+i].color = color;
-               S[I(ns())+i].isColored = true;
-            }
-         }
-
-         isLightColor = false;
-         return;
-      }
-
-      switch (key) {
-      case 8: // DELETE
-         if (isRubber)
-            break;
-         if (S.length > 0) {
-            saveForUndo();
-            deleteSelectedBlob();            // DELETE THE SELECTED BLOB
-         }
-         break;
-      case 16:
-         isShift = false;
-         break;
-      case 17:
-         isControl = false;
-         break;
-      case 18:
-         modelMatrix = matrix_translate(0,0,0);
-         mn = findBlob(xPrev, yPrev);
-         isAlt = false;
-         break;
-      case 27:
-         this.setShowingCode(true);          // ESC TO SHOW/HIDE CODE EDITOR
-         break;
-      case 37: // LEFT ARROW
-         rotateyState--;                  // ROTATE LEFT
-         return;
-      case 38: // UP ARROW
-         rotatexState++;                     // ROTATE UP
-         return;
-      case 39: // RIGHT ARROW
-         rotateyState++;                  // ROTATE RIGHT
-         return;
-      case 40: // DOWN ARROW
-         rotatexState--;                     // ROTATE DOWN
-         return;
-      case 187: // '='
-         if (S.length > 0) {
-            saveForUndo();
-            let sym = S[ns()].symmetry ? 1 : 0;
-            for (let i = 0 ; i <= sym ; i++)
-               setDepthToMaxOfWidthAndHeight(S[I(ns())+i]);
-            activeSet(true);
-         }
-         return;
-      case 189: // '-'
-         if (isRubber)
-            break;
-         if (S.length > 0) {               // MAKE NEGATIVE
-            saveForUndo();
-            let sym = S[ns()].symmetry ? 1 : 0;
-            for (let i = 0 ; i <= sym ; i++)
-               S[I(ns())+i].sign = -S[I(ns())+i].sign;
-            activeSet(true);
-         }
-         break;
-      case 190: // '.'
-         if (S.length > 0) {               // TOGGLE IS BLOBBY
-            saveForUndo();
-            let sym = S[ns()].symmetry ? 1 : 0;
-            for (let i = 0 ; i <= sym ; i++)
-               S[I(ns())+i].isBlobby = ! S[I(ns())+i].isBlobby;
-            activeSet(true);
-         }
-         break;
-      case 191: // '/'
-         isRubber = ! isRubber;
-         break;
-      case 192: // '`'
-         isLightColor = ! isLightColor;    // LIGHT COLOR
-         break;
-      case 219: // '['
-         saveForUndo();
-         if (S.length > 0) {
-            isTranslating = true;
-            transform(ns(), 0,0,-.05);     // AWAY
-            isTranslating = false;
-         }
-         break;
-      case 220: // '\'
-         saveForUndo();
-         isCentering     = false;
-         isMirroring     = false;
-         isRubber        = false;
-         isShowingJoints = false;
-         isWalking       = false;
-         isWiggling      = false;
-         textureState      = 0;
-         rotatexState    = 0;
-         rotateyState    = 0;
-         S = [];                           // DELETE ALL BLOBS
-         mn = -1;
-         activeSet(true);
-         break;
-      case 221: // ']'
-         saveForUndo();
-         if (S.length > 0) {
-            isTranslating = true;
-            transform(ns(), 0,0,.05);      // FORWARD
-            isTranslating = false;
-         }
-         break;
-      }
-
       if (isControl) {
-         switch (ch) {
-         case 'Y':
-            redo();
-            break;
-         case 'Z':
-            undo();
-            break;
-         default:
-            model._doControlAction(ch);
-            break;
-         }
-         return;
+         model._doControlAction(ch);
       }
 
-      if (isShift) {
-         switch (ch) {
-         case 'B':
-            isShowingBounds = ! isShowingBounds;
+      isControl = false;
+
+      if(enableModeling) {
+         // TYPE 0-9 TO SET BLOB COLOR
+         if (S.length > 0 && ch >= '0' && ch <= '9') {
+            saveForUndo();
+            let color = 'color' + (key - 48) + (isLightColor ? 'l' : '');
+   
+            // SET COLOR OVER BACKGROUND TO COLOR ALL UNCOLORED BLOBS.
+   
+            if (mn < 0) {
+               defaultColor = color;
+               for (let n = 0 ; n < S.length ; n++)
+                  if (! S[n].isColored)
+                     S[n].color = defaultColor;
+            }
+   
+            // SET COLOR OVER A BLOB TO EXPLICITLY COLOR IT.
+   
+            else {
+               let sym = S[ns()].symmetry ? 1 : 0;
+               for (let i = 0 ; i <= sym ; i++) {
+                  S[I(ns())+i].color = color;
+                  S[I(ns())+i].isColored = true;
+               }
+            }
+   
+            isLightColor = false;
+            return;
+         }
+   
+         switch (key) {
+         case 8: // DELETE
+            if (isRubber)
+               break;
+            if (S.length > 0) {
+               saveForUndo();
+               deleteSelectedBlob();            // DELETE THE SELECTED BLOB
+            }
             break;
-         case 'E':
-            displacementTextureType = (displacementTextureType + 1) % 3;
+         case 16:
+            isShift = false;
+            break;
+         case 17:
+            isControl = false;
+            break;
+         case 18:
+            modelMatrix = matrix_translate(0,0,0);
+            mn = findBlob(xPrev, yPrev);
+            isAlt = false;
+            break;
+         case 27:
+            this.setShowingCode(true);          // ESC TO SHOW/HIDE CODE EDITOR
+            break;
+         case 37: // LEFT ARROW
+            rotateyState--;                  // ROTATE LEFT
+            return;
+         case 38: // UP ARROW
+            rotatexState++;                     // ROTATE UP
+            return;
+         case 39: // RIGHT ARROW
+            rotateyState++;                  // ROTATE RIGHT
+            return;
+         case 40: // DOWN ARROW
+            rotatexState--;                     // ROTATE DOWN
+            return;
+         case 187: // '='
+            if (S.length > 0) {
+               saveForUndo();
+               let sym = S[ns()].symmetry ? 1 : 0;
+               for (let i = 0 ; i <= sym ; i++)
+                  setDepthToMaxOfWidthAndHeight(S[I(ns())+i]);
+               activeSet(true);
+            }
+            return;
+         case 189: // '-'
+            if (isRubber)
+               break;
+            if (S.length > 0) {               // MAKE NEGATIVE
+               saveForUndo();
+               let sym = S[ns()].symmetry ? 1 : 0;
+               for (let i = 0 ; i <= sym ; i++)
+                  S[I(ns())+i].sign = -S[I(ns())+i].sign;
+               activeSet(true);
+            }
+            break;
+         case 190: // '.'
+            if (S.length > 0) {               // TOGGLE IS BLOBBY
+               saveForUndo();
+               let sym = S[ns()].symmetry ? 1 : 0;
+               for (let i = 0 ; i <= sym ; i++)
+                  S[I(ns())+i].isBlobby = ! S[I(ns())+i].isBlobby;
+               activeSet(true);
+            }
+            break;
+         case 191: // '/'
+            isRubber = ! isRubber;
+            break;
+         case 192: // '`'
+            isLightColor = ! isLightColor;    // LIGHT COLOR
+            break;
+         case 219: // '['
+            saveForUndo();
+            if (S.length > 0) {
+               isTranslating = true;
+               transform(ns(), 0,0,-.05);     // AWAY
+               isTranslating = false;
+            }
+            break;
+         case 220: // '\'
+            saveForUndo();
+            isCentering     = false;
+            isMirroring     = false;
+            isRubber        = false;
+            isShowingJoints = false;
+            isWalking       = false;
+            isWiggling      = false;
+            textureState      = 0;
+            rotatexState    = 0;
+            rotateyState    = 0;
+            S = [];                           // DELETE ALL BLOBS
+            mn = -1;
             activeSet(true);
+            break;
+         case 221: // ']'
+            saveForUndo();
+            if (S.length > 0) {
+               isTranslating = true;
+               transform(ns(), 0,0,.05);      // FORWARD
+               isTranslating = false;
+            }
+            break;
+         }
+   
+         if (isControl) {
+            switch (ch) {
+            case 'Y':
+               redo();
+               break;
+            case 'Z':
+               undo();
+               break;
+            default:
+               model._doControlAction(ch);
+               break;
+            }
+            return;
+         }
+   
+         if (isShift) {
+            switch (ch) {
+            case 'B':
+               isShowingBounds = ! isShowingBounds;
+               break;
+            case 'E':
+               displacementTextureType = (displacementTextureType + 1) % 3;
+               activeSet(true);
+               break;
+            case 'F':
+               isFewerDivs = ! isFewerDivs;
+               break;
+            case 'I':
+               isTextureSrc = ! isTextureSrc;
+               break;
+            case 'M':
+               isModeler = ! isModeler;
+               if (! isModeler) {
+                  S = [];
+                  initMaterials();
+                  frameCount = 0;
+               }
+               else
+                  activeSet(true);
+               break;
+            case 'N':
+               isFaceted = ! isFaceted;
+               break;
+            case 'Q':
+               console.log(JSON.stringify(saveFunction()));
+               break;
+            case 'T':
+               isTexture = ! isTexture;
+               this.setShowingCode(isShowingCode);
+               isNewTextureCode = true;
+               break;
+            case 'V':
+               isRotatedView = ! isRotatedView;
+               break;
+            case 'X':
+               isExperiment = true;
+               break;
+            }
+            return;
+         }
+   
+         switch (ch) {
+         case 'A':
+         case 'B':
+         case 'D':
+         case 'X':
+         case 'Y':
+         case 'Z':
+            if (! isRubber && ! isCreating) {
+               saveForUndo();
+               createBegin(xPrev, yPrev);
+               if (ch == 'A') S[mn].form = 'sphere';
+               if (ch == 'B') S[mn].form = 'cube';
+               if (ch == 'D') S[mn].form = 'donut';
+               if (ch == 'X') S[mn].form = 'tubeX';
+               if (ch == 'Y') S[mn].form = 'tubeY';
+               if (ch == 'Z') S[mn].form = 'tubeZ';
+               isCreating = true;
+            }
+            break;
+   
+         case 'C':
+            if (mn >= 0 && S[mn] && S[mn].M) {
+               saveForUndo();
+               S[mn].M[12] = 0;                    // CENTER BLOB AT CURSOR
+               computeQuadric(S[mn]);
+            }
+            else                                   // BUT IF OVER BACKGROUND
+               isCentering = ! isCentering;        // TOGGLE CENTERING MODE
             break;
          case 'F':
-            isFewerDivs = ! isFewerDivs;
+            textureState = textureState == 4 ? 0 : 4;
+            break;
+         case 'G':
+            isWalking = ! isWalking;
+            break;
+         case 'H':
+            textureState = textureState == 5 ? 0 : 5;
             break;
          case 'I':
-            isTextureSrc = ! isTextureSrc;
+            // html.helpWindow1.style.zIndex = 1 - html.helpWindow1.style.zIndex;
+            // html.helpWindow2.style.zIndex = 1 - html.helpWindow2.style.zIndex;
+            break;
+         case 'J':
+            isShowingJoints = ! isShowingJoints;
+            break;
+         case 'K':
+            if (S.length > 0) {                    // BLUR EDGES
+               saveForUndo();
+               S[ns()].rounded = ! S[ns()].rounded;
+               activeSet(true);
+            }
+            break;
+         case 'L':
+            isLengthening = true;
             break;
          case 'M':
-            isModeler = ! isModeler;
-            if (! isModeler) {
-               S = [];
-               initMaterials();
-               frameCount = 0;
-            }
-            else
-               activeSet(true);
+            isMirroring = ! isMirroring;
             break;
          case 'N':
-            isFaceted = ! isFaceted;
+            textureState = textureState == 1 ? 0 : 1;
+            break;
+         case 'O':
+            // if (isShift)
+            //    projectManager.clearAll();        // CLEAR ALL PROJECT DATA
+            // else
+            //    projectManager.clearNames();      // CLEAR PROJECT NAMES
+            activeSet(true);
+            break;
+         case 'P':
+            projectManager.choice(loadFunction); // USER CHOOSES PROJECT
             break;
          case 'Q':
-            console.log(JSON.stringify(saveFunction()));
+            textureState = textureState == 2 ? 0 : 2;
+            break;
+         case 'R':
+            saveForUndo();
+            isRotating = true;
+            break;
+         case 'S':
+            saveForUndo();
+            isScaling = true;
             break;
          case 'T':
-            isTexture = ! isTexture;
-            this.setShowingCode(isShowingCode);
-            isNewTextureCode = true;
+            saveForUndo();
+            isTranslating = true;
+            break;
+         case 'U':
+            saveForUndo();
+            isUniformScaling = true;
             break;
          case 'V':
-            isRotatedView = ! isRotatedView;
+            textureState = textureState == 3 ? 0 : 3;
             break;
-         case 'X':
-            isExperiment = true;
+         case 'W':
+            isWiggling = ! isWiggling;
             break;
          }
-         return;
-      }
-
-      switch (ch) {
-      case 'A':
-      case 'B':
-      case 'D':
-      case 'X':
-      case 'Y':
-      case 'Z':
-         if (! isRubber && ! isCreating) {
-            saveForUndo();
-            createBegin(xPrev, yPrev);
-            if (ch == 'A') S[mn].form = 'sphere';
-            if (ch == 'B') S[mn].form = 'cube';
-            if (ch == 'D') S[mn].form = 'donut';
-            if (ch == 'X') S[mn].form = 'tubeX';
-            if (ch == 'Y') S[mn].form = 'tubeY';
-            if (ch == 'Z') S[mn].form = 'tubeZ';
-            isCreating = true;
-         }
-         break;
-
-      case 'C':
-         if (mn >= 0 && S[mn] && S[mn].M) {
-            saveForUndo();
-            S[mn].M[12] = 0;                    // CENTER BLOB AT CURSOR
-            computeQuadric(S[mn]);
-         }
-         else                                   // BUT IF OVER BACKGROUND
-            isCentering = ! isCentering;        // TOGGLE CENTERING MODE
-         break;
-      case 'F':
-         textureState = textureState == 4 ? 0 : 4;
-         break;
-      case 'G':
-         isWalking = ! isWalking;
-         break;
-      case 'H':
-         textureState = textureState == 5 ? 0 : 5;
-         break;
-      case 'I':
-         // html.helpWindow1.style.zIndex = 1 - html.helpWindow1.style.zIndex;
-         // html.helpWindow2.style.zIndex = 1 - html.helpWindow2.style.zIndex;
-         break;
-      case 'J':
-         isShowingJoints = ! isShowingJoints;
-         break;
-      case 'K':
-         if (S.length > 0) {                    // BLUR EDGES
-            saveForUndo();
-            S[ns()].rounded = ! S[ns()].rounded;
-            activeSet(true);
-         }
-         break;
-      case 'L':
-         isLengthening = true;
-         break;
-      case 'M':
-         isMirroring = ! isMirroring;
-         break;
-      case 'N':
-         textureState = textureState == 1 ? 0 : 1;
-         break;
-      case 'O':
-         // if (isShift)
-         //    projectManager.clearAll();        // CLEAR ALL PROJECT DATA
-         // else
-         //    projectManager.clearNames();      // CLEAR PROJECT NAMES
-         activeSet(true);
-         break;
-      case 'P':
-         projectManager.choice(loadFunction); // USER CHOOSES PROJECT
-         break;
-      case 'Q':
-         textureState = textureState == 2 ? 0 : 2;
-         break;
-      case 'R':
-         saveForUndo();
-         isRotating = true;
-         break;
-      case 'S':
-         saveForUndo();
-         isScaling = true;
-         break;
-      case 'T':
-         saveForUndo();
-         isTranslating = true;
-         break;
-      case 'U':
-         saveForUndo();
-         isUniformScaling = true;
-         break;
-      case 'V':
-         textureState = textureState == 3 ? 0 : 3;
-         break;
-      case 'W':
-         isWiggling = ! isWiggling;
-         break;
       }
    }
 
