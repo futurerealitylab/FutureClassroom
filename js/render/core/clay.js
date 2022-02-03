@@ -1168,91 +1168,93 @@ let onKeyUp = event => {
       return;
    }
 
-   switch (event.key) {
-   case 'Escape':
-      modeler.setShowingCode(false);
-      break;
-   case '`':
-      deleteChar();
-      modeler.parseCode(codeText.value);
-      break;
-   case ' ':
-   case "'":
-   case '"':
-   case '/':
-      insertChar(event.key);
-      break;
-   case '?':
-      modeler.toggleRubber();
-      break;
-   case 'Enter':
-      if (isShift) {
-         deleteChar();
-         modeler.rotatey(1);
-      }
-      break;
-   case 'Backspace':
-      if (isShift)
-         deleteAll();
-      else if (codeText.selectionStart < codeText.selectionEnd)
-         deleteRange();
-      else
-         deleteChar();
-      break;
-   case 'ArrowLeft':
-      if (isShift) {
-         modeler.prevTexture();
-         codeText.value = modeler.getTexture();
-         modeler.parseCode(codeText.value);
-      }
-      else {
-         let i = codeText.selectionStart;
-         codeText.selectionStart = codeText.selectionEnd = Math.max(0, i-1);
-      }
-      break;
-   case 'ArrowRight':
-      if (isShift) {
-         modeler.nextTexture();
-         codeText.value = modeler.getTexture();
-         modeler.parseCode(codeText.value);
-      }
-      else {
-         let i = codeText.selectionStart;
-         codeText.selectionStart = codeText.selectionEnd = Math.min(codeText.value.length, i+1);
-      }
-      break;
-   case 'ArrowUp':
-      {
-         let i = Math.min(codeText.value.length - 1, codeText.selectionStart);
-         let i0 = i;
-         while (i0 >= 0 && codeText.value.charAt(i0) != '\n')
-            i0--;
-         let di = i - i0;
-         if (i0 > 0) {
-            i = i0 - 1;
-            while (i >= 0 && codeText.value.charAt(i) != '\n')
-               i--;
-            i = Math.min(i + di, i0 - 1);
+   if(false) { // Disabled clay modeling functions for now
+      switch (event.key) {
+         case 'Escape':
+            modeler.setShowingCode(false);
+            break;
+         case '`':
+            deleteChar();
+            modeler.parseCode(codeText.value);
+            break;
+         case ' ':
+         case "'":
+         case '"':
+         case '/':
+            insertChar(event.key);
+            break;
+         case '?':
+            modeler.toggleRubber();
+            break;
+         case 'Enter':
+            if (isShift) {
+               deleteChar();
+               modeler.rotatey(1);
+            }
+            break;
+         case 'Backspace':
+            if (isShift)
+               deleteAll();
+            else if (codeText.selectionStart < codeText.selectionEnd)
+               deleteRange();
+            else
+               deleteChar();
+            break;
+         case 'ArrowLeft':
+            if (isShift) {
+               modeler.prevTexture();
+               codeText.value = modeler.getTexture();
+               modeler.parseCode(codeText.value);
+            }
+            else {
+               let i = codeText.selectionStart;
+               codeText.selectionStart = codeText.selectionEnd = Math.max(0, i-1);
+            }
+            break;
+         case 'ArrowRight':
+            if (isShift) {
+               modeler.nextTexture();
+               codeText.value = modeler.getTexture();
+               modeler.parseCode(codeText.value);
+            }
+            else {
+               let i = codeText.selectionStart;
+               codeText.selectionStart = codeText.selectionEnd = Math.min(codeText.value.length, i+1);
+            }
+            break;
+         case 'ArrowUp':
+            {
+               let i = Math.min(codeText.value.length - 1, codeText.selectionStart);
+               let i0 = i;
+               while (i0 >= 0 && codeText.value.charAt(i0) != '\n')
+                  i0--;
+               let di = i - i0;
+               if (i0 > 0) {
+                  i = i0 - 1;
+                  while (i >= 0 && codeText.value.charAt(i) != '\n')
+                     i--;
+                  i = Math.min(i + di, i0 - 1);
+               }
+               else
+                  i = 0;
+               codeText.selectionStart = codeText.selectionEnd = i;
+            }
+            break;
+         case 'ArrowDown':
+            {
+               let i = codeText.selectionStart;
+               let i0 = i;
+               while (i0 >= 0 && codeText.value.charAt(i0) != '\n')
+                  i0--;
+               let di = i - i0;
+               let i1 = i;
+               while (i1 < codeText.value.length && codeText.value.charAt(i1) != '\n')
+                  i1++;
+               i = Math.min(codeText.value.length, i1 + di);
+               codeText.selectionStart = codeText.selectionEnd = i;
+            }
+            break;
          }
-         else
-            i = 0;
-         codeText.selectionStart = codeText.selectionEnd = i;
-      }
-      break;
-   case 'ArrowDown':
-      {
-         let i = codeText.selectionStart;
-         let i0 = i;
-         while (i0 >= 0 && codeText.value.charAt(i0) != '\n')
-            i0--;
-         let di = i - i0;
-         let i1 = i;
-         while (i1 < codeText.value.length && codeText.value.charAt(i1) != '\n')
-            i1++;
-         i = Math.min(codeText.value.length, i1 + di);
-         codeText.selectionStart = codeText.selectionEnd = i;
-      }
-      break;
    }
 
    wasAlt = wasControl = wasMeta = wasShift = false;
