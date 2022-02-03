@@ -8,15 +8,15 @@ import { InlineViewerHelper } from "./util/inline-viewer-helper.js";
 import { QueryArgs } from "./util/query-args.js";
 import { EventBus } from "./primitive/eventbus.js";
 import * as DefaultSystemEvents from "./primitive/event.js";
-import {
-    loadAudioSources,
-    updateAudioSources,
-    updateAudioNodes,
-    stereo,
-    resonance,
-    audioSources,
-    pauseAudio,
-} from "./util/positional-audio.js";
+// import {
+//     loadAudioSources,
+//     updateAudioSources,
+//     updateAudioNodes,
+//     stereo,
+//     resonance,
+//     audioSources,
+//     pauseAudio,
+// } from "./util/positional-audio.js";
 import { Client as WSClient } from "./util/websocket-client.js";
 import { updateController } from "./render/core/controllerInput.js";
 import * as keyboardInput from "./util/input_keyboard.js";
@@ -79,7 +79,7 @@ export function initXR() {
         });
 
         // Load multiple audio sources.
-        loadAudioSources(window.scene);
+        // loadAudioSources(window.scene);
 
         navigator.xr.requestSession("inline").then(onSessionStarted);
     }
@@ -204,7 +204,7 @@ function onSessionEnded(event) {
         xrButton.setSession(null);
 
         // Stop the audio playback when we exit XR.
-        pauseAudio();
+        // pauseAudio();
     }
 }
 
@@ -250,7 +250,7 @@ function updateInputSources(session, frame, refSpace) {
                     inputSource.handedness
                 ); // let controller = this._controllers[handedness]; // so it is updating actually
                 // ZH: update location
-                if (window.playerid) {
+                // if (window.playerid) {
                     if (inputSource.handedness == "left") {
                         window.avatars[window.playerid].leftController.position =
                             gripPose.transform.position;
@@ -266,11 +266,11 @@ function updateInputSources(session, frame, refSpace) {
                         window.avatars[window.playerid].rightController.matrix =
                             gripPose.transform.matrix;
                     }
-                }
+                // }
             }
         }
         let headPose = frame.getViewerPose(refSpace);
-        if (window.playerid) {
+        // if (window.playerid) {
             window.avatars[window.playerid].headset.position =
                 headPose.transform.position;
             window.avatars[window.playerid].headset.orientation =
@@ -280,9 +280,9 @@ function updateInputSources(session, frame, refSpace) {
 
             for (let source of session.inputSources) {
                 if (source.handedness && source.gamepad) {
-                    if (source.gamepad.buttons[3].pressed) {
-                        console.log("source.gamepad.buttons[3].pressed", source.gamepad.buttons[3].pressed);
-                    }
+                    // if (source.gamepad.buttons[3].pressed) {
+                    //     console.log("source.gamepad.buttons[3].pressed", source.gamepad.buttons[3].pressed);
+                    // }
                     if (source.handedness == "left")
                         window.avatars[window.playerid].leftController.updateButtons(source.gamepad.buttons);
                     if (source.handedness == "right")
@@ -291,7 +291,7 @@ function updateInputSources(session, frame, refSpace) {
                     // console.log("rightController", window.avatars[window.playerid].rightController)
                 }
             }
-        }
+        // }
     }
 }
 
@@ -399,9 +399,9 @@ function onXRFrame(t, frame) {
     // Update the position of all currently selected audio sources. It's
     // possible to select multiple audio sources and drag them at the same
     // time (one per controller that has the trigger held down).
-    updateAudioSources(frame, refSpace);
+    // updateAudioSources(frame, refSpace);
 
-    updateAudioNodes(window.scene);
+    // updateAudioNodes(window.scene);
 
     updateAvatars();
 
@@ -410,17 +410,18 @@ function onXRFrame(t, frame) {
     // ZH: save previous "source.gamepad.buttons" for two controllers,
     // check if changes per frame
     // send to the server if changes
-    if (window.playerid) {
+    // if (window.playerid) {
         const thisAvatar = window.avatars[window.playerid];
         for (let source of session.inputSources) {
             if (source.handedness && source.gamepad) {
                 updateController(thisAvatar, {
                     handedness: source.handedness,
                     buttons: source.gamepad.buttons,
+                    axes: source.gamepad.axes
                 });
             }
         }
-    }
+    // }
 
     if (refSpace == inlineViewerHelper.referenceSpace) {
         inlineViewerHelper.update();
@@ -428,18 +429,18 @@ function onXRFrame(t, frame) {
 
     window.scene.drawXRFrame(frame, pose, time);
 
-    if (pose) {
-        resonance.setListenerFromMatrix({ elements: pose.transform.matrix });
-    }
+    // if (pose) {
+    //     resonance.setListenerFromMatrix({ elements: pose.transform.matrix });
+    // }
 
     window.scene.endFrame();
 }
 
 function updateAvatars() {
     // update transformation of each avatar audio source
-    for (let peerUuid in window.peerConnections) {
-        window.updateAvatarAudio(peerUuid);
-    }
+    // for (let peerUuid in window.peerConnections) {
+    //     window.updateAvatarAudio(peerUuid);
+    // }
 
     // update avatar's model's matrix
     for (let id in window.avatars) {

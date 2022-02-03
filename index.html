@@ -46,9 +46,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
   <header id=header>
     <details open>
       <summary>Welcome to the FutureClassroom!!</summary>
-      <p>
+      <dev id=messages>&nbsp;</dev>
         <!-- <a class="back" href="./">Back</a> -->
-      </p>
     </details>
   </header>
   <!-- <script type="module" src="js/primitive/avatar.js"></script> -->
@@ -64,19 +63,27 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
     <audio id="local_webrtc" autoplay></audio>
   </div>
   <script>
+    window.currentName = '';
+    window.chooseFlag = name => {
+       let flag = name => 'demo' + name + 'State';
+       let names = window.demoNames.split(',').map(item => item.trim());
+       for (let n = 0 ; n < names.length ; n++)
+	  window[flag(names[n])] = name == names[n] && window.currentName != names[n];
+       window.currentName = window[flag(name)] ? name : '';
+    }
     window.addDemoButtons = demoNames => {
+      window.demoNames = demoNames;
       let names = demoNames.split(',').map(item => item.trim());
       let header = document.getElementById("header");
       for (let n = 0; n < names.length; n++) {
         let flag = 'demo' + names[n] + 'State';
         window[flag] = 0;
-        if (names[n] != "Speak") {
-          header.innerHTML += '<button onclick=window.' + flag + '++;window.syncDemos();>' + names[n] + '</button>';
-        }
-        else {
+        if (names[n] != "Speak")
+          header.innerHTML += '<button onclick=chooseFlag("' + names[n] + '");'
+	                    + 'window.syncDemos();>' + names[n] + '</button>';
+        else
           header.innerHTML += '<button id=\"Speak\" onclick=\"window.' + flag + '=!window.' + flag
             + ';window.muteSelf()\">' + names[n] + '</button>';
-        }
       }
     }
     window.addNameField = () => {

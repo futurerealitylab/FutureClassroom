@@ -174,22 +174,15 @@ export class InlineViewerHelper {
       }
       this.dirty = true;
     }
-  
-    if(keyboardInput.keyIsDown(keyboardInput.KEY_SPACE)) {
-      window.interactMode = (window.interactMode + 1)%2;
-    }
-    if(keyboardInput.keyIsDown(keyboardInput.KEY_ZERO)) {
-      window.model = 0;
-    }
-    if(keyboardInput.keyIsDown(keyboardInput.KEY_ONE)) {
-      window.model = 1;
-    }    
   }
 
   onKeyUp(e) {
     switch (e.keyCode) {
       case keyboardInput.KEY_Z:
         window.isSlideShow = !window.isSlideShow;
+        break;
+      case keyboardInput.KEY_SPACE:
+        window.interactMode = 1 - window.interactMode;
         break;
     }
     this.dirty = true;

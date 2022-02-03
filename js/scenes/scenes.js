@@ -1,5 +1,6 @@
 import { Gltf2Node } from "../render/nodes/gltf2.js";
 import { demoCube } from "./demoCube.js";
+import { demo4D } from "./demo4D.js";
 
 let currentDemo = null;
 let loadGLTF = false;
@@ -13,26 +14,28 @@ export let scenes = function () {
         loadGLTF = true;
       }
 
-    if (demoDemoCubeState % 2) loadDemo(demoCube); else stopDemo(demoCube);
+    if (demoDemoCubeState % 2) runDemo(demoCube); else stopDemo(demoCube);
+    if (demoDemo4DState   % 2) runDemo(demo4D)  ; else stopDemo(demo4D);
 }
 
-function loadDemo(demo) {
-  if(!demo.start) {
+function runDemo(demo) {
+  if(! demo._isStarted) {
       // default : remove all the previous demos when starting a new one
       // might be useful to change this into something else if want to show more demos at once
       clay.model.clear(); 
       demo.init(clay.model);
+      demo._isStarted = true;
       currentDemo = demo;
   } 
-  demo.display();
+  demo.display(clay.model);
 }
 
 function stopDemo(demo) {
-  demo.start = false;
-    if(currentDemo == demo) {
-        clay.model.clear();
-        currentDemo = null;
-    }
+  demo._isStarted = false;
+  if(currentDemo == demo) {
+     clay.model.clear();
+     currentDemo = null;
+  }
 }
 
 function showNameTag() {
@@ -48,6 +51,6 @@ function showNameTag() {
     }
   }
 
-window.demoNames = "DemoCube";
+window.demoNames = "DemoCube,Demo4D";
 addDemoButtons(window.demoNames);
 window.addNameField();

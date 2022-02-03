@@ -33,7 +33,8 @@ export function Clay(gl, canvas) {
    let dot = (a,b) => a[0] * b[0] + a[1] * b[1] + ( a.length < 3 ? 0 : a[2] * b[2] +
       ( a.length < 4 ? 0 : a[3] * b[3] ));
    let floor = Math.floor;
-   let mix = (a,b,t) => [ a[0] + t * (b[0] - a[0]), a[1] + t * (b[1] - a[1]), a[2] + t * (b[2] - a[2]) ];
+   let mixf = (a,b,t,u) => a * (u===undefined ? 1-t : t) + b * (u===undefined ? t : u);
+   let mix = (a,b,t,u) => [ mixf(a[0],b[0],t,u), mixf(a[1],b[1],t,u), mixf(a[2],b[2],t,u) ];
    let noise = (new function() {
    let p = [151,160,137,91,90,15,131,13,201,95,96,53,194,233,7,225,140,36,103,30,69,142,8,99,37,240,21,10,23,190,6,148,247,120,234,75,0,26,197,62,94,252,219,203,117,35,11,32,57,177,33,88,237,149,56,87,174,20,125,136,171,168,68,175,74,165,71,134,139,48,27,166,77,146,158,231,83,111,229,122,60,211,133,230,220,105,92,41,55,46,245,40,244,102,143,54,65,25,63,161,1,216,80,73,209,76,132,187,208,89,18,169,200,196,135,130,116,188,159,86,164,100,109,198,173,186,3,64,52,217,226,250,124,123,5,202,38,147,118,126,255,82,85,212,207,206,59,227,47,16,58,17,182,189,28,42,223,183,170,213,119,248,152,2,44,154,163,70,221,153,101,155,167,43,172,9,129,22,39,253,19,98,108,110,79,113,224,232,178,185,112,104,218,246,97,228,251,34,242,193,238,210,144,12,191,179,162,241,81,51,145,235,249,14,239,107,49,192,214,31,181,199,106,157,184,84,204,176,115,121,50,45,127,4,150,254,138,236,205,93,222,114,67,29,24,72,243,141,128,195,78,66,215,61,156,180];
    for (let i = 0 ; i < 256 ; i++) p.push(p[i]);
@@ -162,6 +163,26 @@ let matrix_inverse = src => {
   return dst;
 }
 
+let matrix_aimX = X => {
+   X = normalize(X);
+   let Y0 = cross([0,0,1], X), t0 = dot(Y0,Y0), Z0 = cross(X, Y0),
+       Y1 = cross([1,1,0], X), t1 = dot(Y1,Y1), Z1 = cross(X, Y1),
+       t = t1 / (4 * t0 + t1),
+       Y = normalize(mix(Y0, Y1, t)),
+       Z = normalize(mix(Z0, Z1, t));
+   return [ X[0],X[1],X[2],0, Y[0],Y[1],Y[2],0, Z[0],Z[1],Z[2],0, 0,0,0,1 ];
+}
+
+let matrix_aimY = Y => {
+   Y = normalize(Y);
+   let Z0 = cross([1,0,0], Y), t0 = dot(Z0,Z0), X0 = cross(Y, Z0),
+       Z1 = cross([0,0,1], Y), t1 = dot(Z1,Z1), X1 = cross(Y, Z1),
+       t = t1 / (4 * t0 + t1),
+       Z = normalize(mix(Z0, Z1, t)),
+       X = normalize(mix(X0, X1, t));
+   return [ X[0],X[1],X[2],0, Y[0],Y[1],Y[2],0, Z[0],Z[1],Z[2],0, 0,0,0,1 ];
+}
+
 let matrix_aimZ = Z => {
    Z = normalize(Z);
    let X0 = cross([0,1,0], Z), t0 = dot(X0,X0), Y0 = cross(Z, X0),
@@ -183,6 +204,8 @@ let matrix_transpose = m => [ m[0],m[4],m[ 8],m[12],
 
 let Matrix = function() {
    let top = 0, m = [ matrix_identity() ];
+   this.aimX      = X       => m[top] = matrix_multiply(m[top], matrix_aimX(X));
+   this.aimY      = Y       => m[top] = matrix_multiply(m[top], matrix_aimY(Y));
    this.aimZ      = Z       => m[top] = matrix_multiply(m[top], matrix_aimZ(Z));
    this.identity  = ()      => m[top] = matrix_identity();
    this.translate = (x,y,z) => m[top] = matrix_multiply(m[top], matrix_translate(x,y,z));
@@ -295,10 +318,25 @@ let drawMesh = (mesh, materialId, isTriangleMesh, textureSrc) => {
    }
    setUniform('1i', 'uSampler', 0);                            // SPECIFY TEXTURE INDEX.
    setUniform('1f', 'uTexture', isTexture(textureSrc)? 1 : 0); // ARE WE RENDERING A TEXTURE?
-
-   if (mesh.length > 0) {
-      gl.bufferData(gl.ARRAY_BUFFER, mesh, gl.STATIC_DRAW);
-      if(mesh) gl.drawArrays(isTriangleMesh ? gl.TRIANGLES : gl.TRIANGLE_STRIP, 0, mesh.length / VERTEX_SIZE);
+   if (this.views.length == 1) {
+      setUniform('Matrix4fv', 'uProj', false, this.views[0].projectionMatrix);
+      setUniform('Matrix4fv', 'uView', false, this.views[0].viewMatrix);
+      if (mesh.length > 0) {
+         gl.bufferData(gl.ARRAY_BUFFER, mesh, gl.STATIC_DRAW);
+         if(mesh) gl.drawArrays(isTriangleMesh ? gl.TRIANGLES : gl.TRIANGLE_STRIP, 0, mesh.length / VERTEX_SIZE);
+      }
+    } else {
+      for (let i = 0; i < this.views.length; ++i) {
+        let view = this.views[i];
+        let vp = view.viewport;
+        gl.viewport(vp.x, vp.y, vp.width, vp.height);
+        setUniform('Matrix4fv', 'uProj', false, view.projectionMatrix);
+        setUniform('Matrix4fv', 'uView', false, view.viewMatrix);
+        if (mesh.length > 0) {
+         gl.bufferData(gl.ARRAY_BUFFER, mesh, gl.STATIC_DRAW);
+         if(mesh) gl.drawArrays(isTriangleMesh ? gl.TRIANGLES : gl.TRIANGLE_STRIP, 0, mesh.length / VERTEX_SIZE);
+      }
+      }
    }
 }
 
@@ -1226,7 +1264,8 @@ let onKeyUp = event => {
 //////////////////////////////////////// THE MODELER /////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////
 
-let S = [], vm, vmi, computeQuadric, activeSet, implicitSurface;
+let S = [], vm, vmi, computeQuadric, activeSet, implicitSurface,
+    rotatex, rotatey, rotatexState, rotateyState, modelMatrix;
 
 {
    let activeCount = -1;
@@ -1270,10 +1309,7 @@ let S = [], vm, vmi, computeQuadric, activeSet, implicitSurface;
    let mn = -1, mnPrev = -1;
    let name = '';
    let textureState = 0;
-   let rotatex = 0, rotatexState = 0;
-   let rotatey = 0, rotateyState = 0;
    let startTime = Date.now(), prevTime = startTime, fps = 10;    // TO TRACK FRAME RATE
-   let modelMatrix = matrix_translate(0,0,0);
    let xPrev, yPrev, xyTravel;
    let viewMatrix = matrix_identity();
    let viewMatrixInverse = matrix_inverse(viewMatrix);
@@ -1401,9 +1437,10 @@ let S = [], vm, vmi, computeQuadric, activeSet, implicitSurface;
       pgm = window.clay.clayPgm.program;
    }
 
-   this.animate = gl => {
+   this.animate = view => {
       this.updatePgm();
       this.model = model;
+      this.views = views;
       if(window.clay) scenes();
       // if (html.bgWindow)
       //    html.bgWindow.style.left = flash ? -screen.width : 0;
@@ -1412,8 +1449,9 @@ let S = [], vm, vmi, computeQuadric, activeSet, implicitSurface;
 
       if (isModeler) {
          if (window.animate)
-	         window.animate();
-       model.render(vm);
+            window.animate();
+         model.render(vm);
+         model.setControls();
       }
 
       else {
@@ -1456,8 +1494,8 @@ let S = [], vm, vmi, computeQuadric, activeSet, implicitSurface;
    
       time = (Date.now() - startTime) / 1000;
       setUniform('1f', 'uTime', time);                                  // SET GPU TIME
-      let elapsed = time - prevTime;
-      fps = .1 * fps + .9 / elapsed;
+      let deltaTime = time - prevTime;
+      fps = .1 * fps + .9 / deltaTime;
       prevTime = time;
    
       setUniform('1f', 'uOpacity', 1);
@@ -1798,9 +1836,9 @@ let S = [], vm, vmi, computeQuadric, activeSet, implicitSurface;
 
       // HANDLE ROTATING THE MODEL
    
-      let delta = 2 * elapsed;
+      let delta = 2 * deltaTime;
 
-      let rotateModel = (rotate, rotateState, matrix_rotate) => {
+      let rotateModel = (rotate, rotateState, matrix_rotate, offset) => {
          let rotateTarget = Math.PI / 2 * rotateState;
          if (rotate != rotateTarget) {
             let rotateBy = 0;
@@ -1816,8 +1854,10 @@ let S = [], vm, vmi, computeQuadric, activeSet, implicitSurface;
          }
          return rotate;
       }
+      modelMatrix = matrix_multiply(matrix_translate([0,-1.5,0]), modelMatrix);
       rotatex = rotateModel(rotatex, rotatexState, matrix_rotateX);
       rotatey = rotateModel(rotatey, rotateyState, matrix_rotateY);
+      modelMatrix = matrix_multiply(matrix_translate([0,1.5,0]), modelMatrix);
 
       vm  = matrix_multiply(viewMatrix, modelMatrix);
       vmi = matrix_inverse(vm);
@@ -2517,8 +2557,14 @@ let S = [], vm, vmi, computeQuadric, activeSet, implicitSurface;
       case 37: // LEFT ARROW
          rotateyState--;                  // ROTATE LEFT
          return;
+      case 38: // UP ARROW
+         rotatexState++;                     // ROTATE UP
+         return;
       case 39: // RIGHT ARROW
          rotateyState++;                  // ROTATE RIGHT
+         return;
+      case 40: // DOWN ARROW
+         rotatexState--;                     // ROTATE DOWN
          return;
       case 187: // '='
          if (S.length > 0) {
@@ -2596,9 +2642,9 @@ let S = [], vm, vmi, computeQuadric, activeSet, implicitSurface;
          case 'Z':
             undo();
             break;
-	      default:
+         default:
             model._doControlAction(ch);
-	         break;
+            break;
          }
          return;
       }
@@ -2796,11 +2842,12 @@ function Node(_form) {
        m = new Matrix(),
        form = _form,
        previousTime,
-  rm;
+       rm;
 
    this.clear = () => {
       previousTime = 0;
       rm = matrix_identity;
+      this._animate  = null;
       this._bevel    = false;
       this._blend    = false;
       this._blur     = .5;
@@ -2811,10 +2858,12 @@ function Node(_form) {
       this._parent   = null;
       this._texture  = '';
       this._precision = 1;
- m.identity();
- this._controlActions = {};
- implicitSurface.remesh();
- return this;
+      m.identity();
+      this._controlActions = {};
+      implicitSurface.remesh();
+      rotatex = rotatey = rotatexState = rotateyState = 0;
+      modelMatrix = matrix_identity();
+      return this;
    }
 
    this.clear();
@@ -2856,82 +2905,107 @@ function Node(_form) {
     this._children.splice(i, 1);
       return this;
    }
-      this.animate  = func    => { this._animate = func; return this; }
-      this.identity = ()      => { m.identity();         return this; }
-      this.move     = (x,y,z) => { m.translate(x,y,z);   return this; }
-      this.turnX    = theta   => { m.rotateX(theta);     return this; }
-      this.turnY    = theta   => { m.rotateY(theta);     return this; }
-      this.turnZ    = theta   => { m.rotateZ(theta);     return this; }
-      this.scale    = (x,y,z) => { m.scale(x,y,z);       return this; }
-      this.color    = (r,g,b) => { this._color = typeof r === 'string' ||
-                                                 Array.isArray(r) ? r : [r,g,b]; return this; }
-      this.blur     = value   => { this._blur = value;   return this; }
-      this.info     = value   => { if (this.prop('_blend') && this._info != value) activeSet(true);
-                                   this._info = value;   return this; }
-      this.texture  = src     => { this._texture = src;  return this; }
-      this.bevel    = tf      => { this._bevel = tf === undefined ? true : tf; return this; }
-      this.blend    = tf      => { if (this._blend != tf) activeSet(true);
-                                   this._blend = tf === undefined ? false : tf; return this; }
-      this.melt     = tf      => { this._melt  = tf === undefined ? true : tf; return this; }
-      this.precision = value   => { this._precision = value; return this; }
-      this.render = pm => {
-         // if (this == model) {
-         //    let s = '<font color=white face=helvetica><small><small><small><p>';
-         //    s += '<b><big>' + modelData[modelId].name + '</big></b><p>';
-         //         for (let ch in this._controlActions)
-         //            s += '<font face=courier><b>CTRL-' + ch.toLowerCase() + '</b></font> ' +
-         //            this._controlActions[ch].label + '<br>';
-         //       //   html.inactiveCode.innerHTML = s;
-         // }
-         implicitSurface.setPrecision(this.prop('_precision'));
-         let color = this.prop('_color');
-         if (Array.isArray(color)) {
-            let materialName = '' + id;
-            let r = color[0], g = color[1], b = color[2];
-            materials[materialName] = { ambient : [.2*r ,.2*g ,.2*b ],
-                                        diffuse : [.8*r ,.8*g ,.8*b ],
-                                        specular: [.9,.9,.9,20] };
-            color = materialName;
+   this.animate  = func    => { this._animate = func; return this; }
+   this.identity = ()      => { m.identity();         return this; }
+   this.aimX     = vec     => { m.aimX(vec);          return this; }
+   this.aimY     = vec     => { m.aimY(vec);          return this; }
+   this.aimZ     = vec     => { m.aimZ(vec);          return this; }
+   this.move     = (x,y,z) => { m.translate(x,y,z);   return this; }
+   this.setMatrix = value  => { m.setValue(value);    return this; }
+   this.turnX    = theta   => { m.rotateX(theta);     return this; }
+   this.turnY    = theta   => { m.rotateY(theta);     return this; }
+   this.turnZ    = theta   => { m.rotateZ(theta);     return this; }
+   this.scale    = (x,y,z) => { m.scale(x,y,z);       return this; }
+   this.color    = (r,g,b) => { this._color = typeof r === 'string' ||
+                                              Array.isArray(r) ? r : [r,g,b]; return this; }
+   this.blur     = value   => { this._blur = value;   return this; }
+   this.info     = value   => { if (this.prop('_blend') && this._info != value) activeSet(true);
+                                this._info = value;   return this; }
+   this.texture  = src     => { this._texture = src;  return this; }
+   this.bevel    = tf      => { this._bevel = tf === undefined ? true : tf; return this; }
+   this.blend    = tf      => { if (this._blend != tf) activeSet(true);
+                                this._blend = tf === undefined ? false : tf; return this; }
+   this.melt     = tf      => { this._melt  = tf === undefined ? true : tf; return this; }
+   this.precision = value   => { this._precision = value; return this; }
+
+   window.controlAction = ch => {
+      if (model._controlActions[ch])
+         model._controlActions[ch].func();
+   }
+
+   this.render = pm => {
+
+      // if (this == model) {
+      //    let s = '<font color=white face=helvetica><small><small><small><p>';
+      //    s += '<b><big>' + modelData[modelId].name + '</big></b><p>';
+      //         for (let ch in this._controlActions)
+      //            s += '<font face=courier><b>CTRL-' + ch.toLowerCase() + '</b></font> ' +
+      //            this._controlActions[ch].label + '<br>';
+      //       //   html.inactiveCode.innerHTML = s;
+      // }
+      implicitSurface.setPrecision(this.prop('_precision'));
+      let color = this.prop('_color');
+      if (Array.isArray(color)) {
+         let materialName = '' + id;
+         let r = color[0], g = color[1], b = color[2];
+         materials[materialName] = { ambient : [.2*r ,.2*g ,.2*b ],
+                                     diffuse : [.8*r ,.8*g ,.8*b ],
+                                     specular: [.9,.9,.9,20] };
+         color = materialName;
+      }
+      if (this._animate) {
+         this.time = Date.now() / 1000 - startTime;
+         this.deltaTime = previousTime ? this.time - previousTime : 1/30;
+         if (this.prop('_melt'))
+            activeSet(true);
+         this._animate(this);
+         previousTime = this.time;
+      }
+      rm = matrix_multiply(pm, m.getValue());
+      if (form == 'root')
+         S = [];
+      else if (form) {
+         let s = {
+            blur: this.prop('_blur'),
+            color: color,
+            id: id,
+            info: this.prop('_info'),
+            isBlobby: this.prop('_blend'),
+            isColored: true,
+            rounded: this.prop('_bevel'),
+            sign: 1,
+            symmetry: 0,
+            texture: this.prop('_texture'),
+            form: form,
+            M: matrix_multiply(vmi, rm)
+         };
+         computeQuadric(s);
+         S.push(s);
+      }
+      for (let i = 0 ; i < this._children.length ; i++)
+         this._children[i].render(rm);
+   }
+
+   let wasInteractMode = true;
+
+   this.setControls = () => {
+      if (interactMode != wasInteractMode) {
+         messages.innerHTML = '<button onclick="interactMode=!interactMode">mode</button>';
+         if (interactMode) {
+            let message = ' control keys: ';
+            for (let ch in this._controlActions)
+               message += '<button onclick=controlAction("' + ch + '")>' + ch.toLowerCase() + '</button>';
+            messages.innerHTML += message;
          }
-         if (this._animate) {
-            this.time = Date.now() / 1000 - startTime;
-            this.elapsed = previousTime ? this.time - previousTime : 1/30;
-            if (this.prop('_melt'))
-               activeSet(true);
-            this._animate(this);
-            previousTime = this.time;
-         }
-         rm = matrix_multiply(pm, m.getValue());
-         if (form == 'root')
-            S = [];
-         else if (form) {
-            let s = {
-               blur: this.prop('_blur'),
-               color: color,
-               id: id,
-               info: this.prop('_info'),
-               isBlobby: this.prop('_blend'),
-               isColored: true,
-               rounded: this.prop('_bevel'),
-               sign: 1,
-               symmetry: 0,
-               texture: this.prop('_texture'),
-               form: form,
-               M: matrix_multiply(vmi, rm)
-            };
-            computeQuadric(s);
-            S.push(s);
-         }
-         for (let i = 0 ; i < this._children.length ; i++)
-            this._children[i].render(rm);
+         wasInteractMode = interactMode;
       }
    }
+}
 
 // EXPOSE A ROOT NODE FOR EXTERNAL MODELING.
 
    let model = new Node('root');
    this.model = model;
-
    let startTime = Date.now() / 1000;
 
    // let modelData = [], modelId = 0;
