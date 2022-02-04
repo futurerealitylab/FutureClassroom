@@ -2511,6 +2511,21 @@ let S = [], vm, vmi, computeQuadric, activeSet, implicitSurface,
 
       isControl = false;
 
+      switch(key) {
+         case 37: // LEFT ARROW
+            rotateyState--;                  // ROTATE LEFT
+            return;
+         case 38: // UP ARROW
+            rotatexState++;                  // ROTATE UP
+            return;
+         case 39: // RIGHT ARROW
+            rotateyState++;                  // ROTATE RIGHT
+            return;
+         case 40: // DOWN ARROW
+            rotatexState--;                  // ROTATE DOWN
+            return;
+      }
+
       if(enableModeling) {
          // TYPE 0-9 TO SET BLOB COLOR
          if (S.length > 0 && ch >= '0' && ch <= '9') {
@@ -2563,18 +2578,6 @@ let S = [], vm, vmi, computeQuadric, activeSet, implicitSurface,
          case 27:
             this.setShowingCode(true);          // ESC TO SHOW/HIDE CODE EDITOR
             break;
-         case 37: // LEFT ARROW
-            rotateyState--;                  // ROTATE LEFT
-            return;
-         case 38: // UP ARROW
-            rotatexState++;                     // ROTATE UP
-            return;
-         case 39: // RIGHT ARROW
-            rotateyState++;                  // ROTATE RIGHT
-            return;
-         case 40: // DOWN ARROW
-            rotatexState--;                     // ROTATE DOWN
-            return;
          case 187: // '='
             if (S.length > 0) {
                saveForUndo();
