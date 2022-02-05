@@ -1526,7 +1526,7 @@ let S = [], vm, vmi, computeQuadric, activeSet, implicitSurface,
       isExperiment = false;
 
       M.save();
-
+/*
       if (isRotatedView) {
          M.translate(.2,.8,.2);
          M.rotateX(.8);
@@ -1535,6 +1535,8 @@ let S = [], vm, vmi, computeQuadric, activeSet, implicitSurface,
          M.identity();
          M.scale(.8);
       }
+*/
+
       viewMatrix = M.getValue();
       viewMatrixInverse = matrix_inverse(viewMatrix);
 
