@@ -1,4 +1,4 @@
-import { cg } from "../render/core/cg.js";
+import * as cg from "../render/core/cg.js";
 import { controllerMatrix, buttonState, joyStickState } from "../render/core/controllerInput.js";
 
 let Demo4D = function() {
