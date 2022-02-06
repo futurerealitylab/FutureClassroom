@@ -10,7 +10,7 @@ function CG() {
       ( a.length < 4 ? 0 : a[3] * b[3] ));
    this.mix = (a,b,t,u) => [ mixf(a[0],b[0],t,u), mixf(a[1],b[1],t,u), mixf(a[2],b[2],t,u) ];
    this.norm = v => Math.sqrt(this.dot(v,v));
-   this.normalize = (v,s) => this.scale(v, 1 / norm(v));
+   this.normalize = (v,s) => this.scale(v, 1 / this.norm(v));
    this.scale = (v, s) => { let w = []; for (let i=0 ; i<v.length ; i++) w.push(s*v[i]); return w; }
 
 // NOISE METHOD
@@ -42,31 +42,31 @@ function CG() {
 
 this.mAimX = X => {
    X = this.normalize(X);
-   let Y0 = this.cross([0,0,1], X), t0 = dot(Y0,Y0), Z0 = cross(X, Y0),
-       Y1 = this.cross([1,1,0], X), t1 = dot(Y1,Y1), Z1 = cross(X, Y1),
+   let Y0 = this.cross([0,0,1], X), t0 = this.dot(Y0,Y0), Z0 = this.cross(X, Y0),
+       Y1 = this.cross([1,1,0], X), t1 = this.dot(Y1,Y1), Z1 = this.cross(X, Y1),
        t = t1 / (4 * t0 + t1),
-       Y = this.normalize(mix(Y0, Y1, t)),
-       Z = this.normalize(mix(Z0, Z1, t));
+       Y = this.normalize(this.mix(Y0, Y1, t)),
+       Z = this.normalize(this.mix(Z0, Z1, t));
    return [ X[0],X[1],X[2],0, Y[0],Y[1],Y[2],0, Z[0],Z[1],Z[2],0, 0,0,0,1 ];
 }
 
 this.mAimY = Y => {
    Y = this.normalize(Y);
-   let Z0 = this.cross([1,0,0], Y), t0 = dot(Z0,Z0), X0 = cross(Y, Z0),
-       Z1 = this.cross([0,0,1], Y), t1 = dot(Z1,Z1), X1 = cross(Y, Z1),
+   let Z0 = this.cross([1,0,0], Y), t0 = this.dot(Z0,Z0), X0 = this.cross(Y, Z0),
+       Z1 = this.cross([0,0,1], Y), t1 = this.dot(Z1,Z1), X1 = this.cross(Y, Z1),
        t = t1 / (4 * t0 + t1),
-       Z = this.normalize(mix(Z0, Z1, t)),
-       X = this.normalize(mix(X0, X1, t));
+       Z = this.normalize(this.mix(Z0, Z1, t)),
+       X = this.normalize(this.mix(X0, X1, t));
    return [ X[0],X[1],X[2],0, Y[0],Y[1],Y[2],0, Z[0],Z[1],Z[2],0, 0,0,0,1 ];
 }
 
 this.mAimZ = Z => {
    Z = this.normalize(Z);
-   let X0 = this.cross([0,1,0], Z), t0 = dot(X0,X0), Y0 = cross(Z, X0),
-       X1 = this.cross([1,0,0], Z), t1 = dot(X1,X1), Y1 = cross(Z, X1),
+   let X0 = this.cross([0,1,0], Z), t0 = this.dot(X0,X0), Y0 = this.cross(Z, X0),
+       X1 = this.cross([1,0,0], Z), t1 = this.dot(X1,X1), Y1 = this.cross(Z, X1),
        t = t1 / (4 * t0 + t1),
-       X = this.normalize(mix(X0, X1, t)),
-       Y = this.normalize(mix(Y0, Y1, t));
+       X = this.normalize(this.mix(X0, X1, t)),
+       Y = this.normalize(this.mix(Y0, Y1, t));
    return [ X[0],X[1],X[2],0, Y[0],Y[1],Y[2],0, Z[0],Z[1],Z[2],0, 0,0,0,1 ];
 }
 
