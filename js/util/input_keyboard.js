@@ -34,7 +34,6 @@ export function initKeyEvents(keypoll, doc = document) {
     if (!input.isInit) {
         doc.addEventListener("keydown", (e) => {
             if (e.target != doc.body) { return; }
-
             _keyQueue.enqueue(e);
 
             if (_keydown) {
@@ -43,7 +42,6 @@ export function initKeyEvents(keypoll, doc = document) {
         }, false);
         doc.addEventListener("keyup", (e) => {
             if (e.target != doc.body) { return; }
-
             _keyQueue.enqueue(e);
 
             if (_keyup) {
@@ -85,27 +83,27 @@ export function updateKeyState() {
 };
 
 export function keyWentDown(code) {
-    return !input.keyPrev[code] && input.keyCurr[code];
+    return (input.keyPrev[code] == 0) && (input.keyCurr[code] == 1);
 };
 export function keyWentDownNum(code) {
     return (~input.keyPrev[code]) & input.keyCurr[code];
 };
 
 export function keyIsDown(code) {
-    return input.keyCurr[code];
+    return input.keyCurr[code] == 1;
 };
 export function keyIsDownNum(code) {
     return input.keyCurr[code];
 };
 export function keyIsUp(code) {
-    return !input.keyCurr[code];
+    return input.keyCurr[code] == 0;
 };
 export function keyIsUpNum(code) {
     return ~input.keyCurr[code];
 };
 
 export function keyWentUp(code) {
-    return input.keyPrev[code] && !input.keyCurr[code];
+    return (input.keyPrev[code] == 1) && (input.keyCurr[code] == 0);
 };
 export function keyWentUpNum(code) {
     return input.keyPrev[code] & (~input.keyCurr[code]);
@@ -155,3 +153,4 @@ export const KEY_Y = 89;
 export const KEY_Z = 90;
 export const KEY_ZERO = 48;
 export const KEY_ONE = 49;
+export const KEY_L_CONTROL = 17;

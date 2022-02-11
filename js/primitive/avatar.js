@@ -3,6 +3,7 @@
 import { Gltf2Node } from "../render/nodes/gltf2.js";
 import { mat4, vec3 } from "../render/math/gl-matrix.js";
 import { corelink_event } from "../util/corelink_sender.js";
+import * as global from "../global.js";
 
 export function initAvatar(id) {
   let headset = new Headset();
@@ -10,11 +11,11 @@ export function initAvatar(id) {
   let rightController = new Controller("right");
   // setup render nodes for new avatar
   headset.model.name = "headset" + id;
-  window.scene.addNode(headset.model);
+  global.scene().addNode(headset.model);
   leftController.model.name = "LC" + id;
-  window.scene.addNode(leftController.model);
+  global.scene().addNode(leftController.model);
   rightController.model.name = "RC" + id;
-  window.scene.addNode(rightController.model);
+  global.scene().addNode(rightController.model);
   let avatar = new Avatar(headset, id, leftController, rightController);
   window.avatars[id] = avatar;
 }

@@ -1,5 +1,7 @@
 "use strict";
-import { scenes } from "../../scenes/scenes.js";
+import { scenes } from "/js/handle_scenes.js";
+
+import * as keyboardInput from "../../util/input_keyboard.js";
 
 export function Clay(gl, canvas) {
    let clayPgm = function () {
@@ -22,6 +24,7 @@ export function Clay(gl, canvas) {
    let time;
    let uvToForm;
    let justPressed = false;
+   let enableModeling = false;
 
 
 //////////////////////////////////////////////////////////////////////////////////////////////
@@ -33,7 +36,8 @@ export function Clay(gl, canvas) {
    let dot = (a,b) => a[0] * b[0] + a[1] * b[1] + ( a.length < 3 ? 0 : a[2] * b[2] +
       ( a.length < 4 ? 0 : a[3] * b[3] ));
    let floor = Math.floor;
-   let mix = (a,b,t) => [ a[0] + t * (b[0] - a[0]), a[1] + t * (b[1] - a[1]), a[2] + t * (b[2] - a[2]) ];
+   let mixf = (a,b,t,u) => a * (u===undefined ? 1-t : t) + b * (u===undefined ? t : u);
+   let mix = (a,b,t,u) => [ mixf(a[0],b[0],t,u), mixf(a[1],b[1],t,u), mixf(a[2],b[2],t,u) ];
    let noise = (new function() {
    let p = [151,160,137,91,90,15,131,13,201,95,96,53,194,233,7,225,140,36,103,30,69,142,8,99,37,240,21,10,23,190,6,148,247,120,234,75,0,26,197,62,94,252,219,203,117,35,11,32,57,177,33,88,237,149,56,87,174,20,125,136,171,168,68,175,74,165,71,134,139,48,27,166,77,146,158,231,83,111,229,122,60,211,133,230,220,105,92,41,55,46,245,40,244,102,143,54,65,25,63,161,1,216,80,73,209,76,132,187,208,89,18,169,200,196,135,130,116,188,159,86,164,100,109,198,173,186,3,64,52,217,226,250,124,123,5,202,38,147,118,126,255,82,85,212,207,206,59,227,47,16,58,17,182,189,28,42,223,183,170,213,119,248,152,2,44,154,163,70,221,153,101,155,167,43,172,9,129,22,39,253,19,98,108,110,79,113,224,232,178,185,112,104,218,246,97,228,251,34,242,193,238,210,144,12,191,179,162,241,81,51,145,235,249,14,239,107,49,192,214,31,181,199,106,157,184,84,204,176,115,121,50,45,127,4,150,254,138,236,205,93,222,114,67,29,24,72,243,141,128,195,78,66,215,61,156,180];
    for (let i = 0 ; i < 256 ; i++) p.push(p[i]);
@@ -162,6 +166,26 @@ let matrix_inverse = src => {
   return dst;
 }
 
+let matrix_aimX = X => {
+   X = normalize(X);
+   let Y0 = cross([0,0,1], X), t0 = dot(Y0,Y0), Z0 = cross(X, Y0),
+       Y1 = cross([1,1,0], X), t1 = dot(Y1,Y1), Z1 = cross(X, Y1),
+       t = t1 / (4 * t0 + t1),
+       Y = normalize(mix(Y0, Y1, t)),
+       Z = normalize(mix(Z0, Z1, t));
+   return [ X[0],X[1],X[2],0, Y[0],Y[1],Y[2],0, Z[0],Z[1],Z[2],0, 0,0,0,1 ];
+}
+
+let matrix_aimY = Y => {
+   Y = normalize(Y);
+   let Z0 = cross([1,0,0], Y), t0 = dot(Z0,Z0), X0 = cross(Y, Z0),
+       Z1 = cross([0,0,1], Y), t1 = dot(Z1,Z1), X1 = cross(Y, Z1),
+       t = t1 / (4 * t0 + t1),
+       Z = normalize(mix(Z0, Z1, t)),
+       X = normalize(mix(X0, X1, t));
+   return [ X[0],X[1],X[2],0, Y[0],Y[1],Y[2],0, Z[0],Z[1],Z[2],0, 0,0,0,1 ];
+}
+
 let matrix_aimZ = Z => {
    Z = normalize(Z);
    let X0 = cross([0,1,0], Z), t0 = dot(X0,X0), Y0 = cross(Z, X0),
@@ -183,6 +207,8 @@ let matrix_transpose = m => [ m[0],m[4],m[ 8],m[12],
 
 let Matrix = function() {
    let top = 0, m = [ matrix_identity() ];
+   this.aimX      = X       => m[top] = matrix_multiply(m[top], matrix_aimX(X));
+   this.aimY      = Y       => m[top] = matrix_multiply(m[top], matrix_aimY(Y));
    this.aimZ      = Z       => m[top] = matrix_multiply(m[top], matrix_aimZ(Z));
    this.identity  = ()      => m[top] = matrix_identity();
    this.translate = (x,y,z) => m[top] = matrix_multiply(m[top], matrix_translate(x,y,z));
@@ -247,11 +273,11 @@ this.addEventListenersToCanvas = function(canvas) {
       case 222: // '
          e.preventDefault();
       }
-      canvas.onKeyPress(e.keyCode);
+      canvas.onKeyPress(e.keyCode, e);
    }, true);
 
    window.addEventListener('keyup', function(e) {
-      canvas.onKeyRelease(e.keyCode);
+      canvas.onKeyRelease(e.keyCode, e);
    }, true);
 }
 
@@ -295,10 +321,25 @@ let drawMesh = (mesh, materialId, isTriangleMesh, textureSrc) => {
    }
    setUniform('1i', 'uSampler', 0);                            // SPECIFY TEXTURE INDEX.
    setUniform('1f', 'uTexture', isTexture(textureSrc)? 1 : 0); // ARE WE RENDERING A TEXTURE?
-
-   if (mesh.length > 0) {
-      gl.bufferData(gl.ARRAY_BUFFER, mesh, gl.STATIC_DRAW);
-      if(mesh) gl.drawArrays(isTriangleMesh ? gl.TRIANGLES : gl.TRIANGLE_STRIP, 0, mesh.length / VERTEX_SIZE);
+   if (this.views.length == 1) {
+      setUniform('Matrix4fv', 'uProj', false, this.views[0].projectionMatrix);
+      setUniform('Matrix4fv', 'uView', false, this.views[0].viewMatrix);
+      if (mesh.length > 0) {
+         gl.bufferData(gl.ARRAY_BUFFER, mesh, gl.STATIC_DRAW);
+         if(mesh) gl.drawArrays(isTriangleMesh ? gl.TRIANGLES : gl.TRIANGLE_STRIP, 0, mesh.length / VERTEX_SIZE);
+      }
+    } else {
+      for (let i = 0; i < this.views.length; ++i) {
+        let view = this.views[i];
+        let vp = view.viewport;
+        gl.viewport(vp.x, vp.y, vp.width, vp.height);
+        setUniform('Matrix4fv', 'uProj', false, view.projectionMatrix);
+        setUniform('Matrix4fv', 'uView', false, view.viewMatrix);
+        if (mesh.length > 0) {
+         gl.bufferData(gl.ARRAY_BUFFER, mesh, gl.STATIC_DRAW);
+         if(mesh) gl.drawArrays(isTriangleMesh ? gl.TRIANGLES : gl.TRIANGLE_STRIP, 0, mesh.length / VERTEX_SIZE);
+      }
+      }
    }
 }
 
@@ -478,8 +519,8 @@ let permuteCoords = mesh => {
 let toruszMesh    = createMesh(32, 16, uvToTorus, .37);
 let torusxMesh    = permuteCoords(toruszMesh);
 let torusyMesh    = permuteCoords(torusxMesh);
-let sphereMesh   = createMesh(32, 16, uvToSphere);
-let tubeMesh     = createMesh(32, 2, uvToTube);
+let sphereMesh    = createMesh(32, 16, uvToSphere);
+let tubeMesh      = createMesh(32,  2, uvToTube);
 let diskzMesh     = createMesh(32,  2, uvToDisk);
 let diskxMesh     = permuteCoords(diskzMesh);
 let diskyMesh     = permuteCoords(diskxMesh);
@@ -552,7 +593,7 @@ const SPHERE    = 0,
       DONUT     = 5;
 
 function Blobs() {
-   let time = 0, textureState = 0, textureSrc = '', data, blurFactor = 0.5;
+   let time = 0, textureState = 0, textureSrc = '', data, blurFactor = 0.5, bounds;
    this.isTexture = true;
 
    // CONVERT AN IMPLICIT FUNCTION TO A TRIANGLE MESH
@@ -602,14 +643,14 @@ function Blobs() {
       // THE SIX POSSIBLE INTERMEDIATE PATHS THROUGH A TETRAHEDRON
 
       let di1 = [1,0,0,1,0,0], dj1 = [0,1,0,0,1,0], dk1 = [0,0,1,0,0,1],
-            di2 = [1,0,1,1,1,0], dj2 = [1,1,0,0,1,1], dk2 = [0,1,1,1,0,1];
+          di2 = [1,0,1,1,1,0], dj2 = [1,1,0,0,1,1], dk2 = [0,1,1,1,0,1];
 
       // THERE ARE 16 CASES TO CONSIDER
 
       let cases = [ [0         ], [1, 0,1,2,3], [1, 1,2,0,3], [2, 0,1,2,3],
-                     [1, 2,3,0,1], [2, 0,2,3,1], [2, 1,2,0,3], [1, 3,1,2,0],
-                     [1, 3,0,2,1], [2, 0,3,1,2], [2, 1,3,2,0], [1, 2,1,0,3],
-                     [2, 2,3,0,1], [1, 1,3,0,2], [1, 0,3,2,1], [0         ] ];
+                    [1, 2,3,0,1], [2, 0,2,3,1], [2, 1,2,0,3], [1, 3,1,2,0],
+                    [1, 3,0,2,1], [2, 0,3,1,2], [2, 1,3,2,0], [1, 2,1,0,3],
+                    [2, 2,3,0,1], [1, 1,3,0,2], [1, 0,3,2,1], [0         ] ];
 
       // COMPUTE THE ACTIVE VOLUME
 
@@ -636,7 +677,7 @@ function Blobs() {
          for (j = lo[1] ; j <= hi[1] ; j++)
          for (i = lo[0] ; i <= hi[0] ; i++) {
             k == lo[0] ? setV(i,j,k, this.eval(i2t(i), i2t(j), i2t(k)))
-            : deleteV(i,j,k-1);
+                       : deleteV(i,j,k-1);
             setV(i,j,k+1, this.eval(i2t(i), i2t(j), i2t(k+1)));
          }
 
@@ -648,7 +689,7 @@ function Blobs() {
                let C03 = (getV(i,j,k) > 0) << 0 | (getV(i+1,j+1,k+1) > 0) << 3;
                for (let p = 0 ; p < 6 ; p++) {
                   let C = cases [ C03 | (getV(i+di1[p],j+dj1[p],k+dk1[p]) > 0) << 1
-                                       | (getV(i+di2[p],j+dj2[p],k+dk2[p]) > 0) << 2 ];
+                                      | (getV(i+di2[p],j+dj2[p],k+dk2[p]) > 0) << 2 ];
                   if (C[0]) {                                // number of triangles in simplex.
                      S[1] = di1[p] | dj1[p]<<1 | dk1[p]<<2;  // assign 2nd corner of simplex.
                      S[2] = di2[p] | dj2[p]<<1 | dk2[p]<<2;  // assign 3rd corner of simplex.
@@ -662,7 +703,7 @@ function Blobs() {
       // SMOOTH THE MESH
 
       let Q = Array(P.length).fill(0),
-            A = Array(P.length).fill(0);
+          A = Array(P.length).fill(0);
       for (let n = 0 ; n < T.length ; n += 3) {
          let I = [ 3 * T[n], 3 * T[n+1], 3 * T[n+2] ];
          for (let i = 0 ; i < 3 ; i++) {
@@ -696,16 +737,16 @@ function Blobs() {
          N[a+1] + N[b+1] + N[c+1],
          N[a+2] + N[b+2] + N[c+2] ];
          if (isFaceted) {
-         let normal = normalize(normalDirection);
-         for (let j = 0 ; j < 3 ; j++)
-         N[a+j] = N[b+j] = N[c+j] = normal[j];
+            let normal = normalize(normalDirection);
+            for (let j = 0 ; j < 3 ; j++)
+               N[a+j] = N[b+j] = N[c+j] = normal[j];
          }
 
          let addVertex = a => {
             let p  = P.slice(a, a+3),
                   n  = N.slice(a, a+3), 
                   uv = n[2] > 0 ? [ .5 + .5*p[0], .5 - .5*p[1] ] :
-                                 [ n[0]<.5 ? 0 : 1, n[1]>.5 ? 1 : 0 ];
+                                  [ n[0]<.5 ? 0 : 1, n[1]>.5 ? 1 : 0 ];
             let v = vertexArray(p, n, [1,0,0], uv, [1,1,1], [1,0,0,0,0,0]);
             for (let j = 0 ; j < VERTEX_SIZE ; j++)
                vertices.push(v[j]);
@@ -956,7 +997,7 @@ function Blobs() {
                wx = W[0], wy = W[1], wz = W[2],
                A =   a*wx*wx + b*wx*wy + c*wz*wx + e*wy*wy +   f*wy*wz + h*wz*wz,
                B = 2*a*wx*vx + b*wx*vy + b*wy*vx + c*wz*vx +   c*wx*vz + d*wx +
-                  2*e*wy*vy + f*wy*vz + f*wz*vy + g*wy    + 2*h*wz*vz + i*wz,
+                   2*e*wy*vy + f*wy*vz + f*wz*vy + g*wy    + 2*h*wz*vz + i*wz,
                C =   a*vx*vx + b*vx*vy + c*vz*vx + d*vx    +   e*vy*vy +
                      f*vy*vz + g*vy    + h*vz*vz + i*vz    +   j,
                t = solveQuadraticEquation(A,B,C),
@@ -974,8 +1015,8 @@ function Blobs() {
             Q.push(QA[i] + QB[i] + QC[i]);
          Q[9] -= 1;
          bounds.push([zBounds(P, 1,2,0, Q, 4,5,1,6,7,2,8,0,3,9),
-                        zBounds(P, 2,0,1, Q, 7,2,5,8,0,1,3,4,6,9),
-                        zBounds(P, 0,1,2, Q, 0,1,2,3,4,5,6,7,8,9)]);
+                      zBounds(P, 2,0,1, Q, 7,2,5,8,0,1,3,4,6,9),
+                      zBounds(P, 0,1,2, Q, 0,1,2,3,4,5,6,7,8,9)]);
       }
       return bounds;
    }
@@ -994,6 +1035,8 @@ function ImplicitSurface() {
    this.setIsTexture  = value => blobs.isTexture = value;
    this.setPrecision  = value => precision = value;
    this.mesh          = () => mesh;
+   this.meshInfo      = () => { return { mesh: mesh, divs: divs }; }
+   this.divs          = () => divs;
    this.remesh        = () => mesh = null;
    this.bounds        = t => blobs.innerBounds;
 
@@ -1130,91 +1173,93 @@ let onKeyUp = event => {
       return;
    }
 
-   switch (event.key) {
-   case 'Escape':
-      modeler.setShowingCode(false);
-      break;
-   case '`':
-      deleteChar();
-      modeler.parseCode(codeText.value);
-      break;
-   case ' ':
-   case "'":
-   case '"':
-   case '/':
-      insertChar(event.key);
-      break;
-   case '?':
-      modeler.toggleRubber();
-      break;
-   case 'Enter':
-      if (isShift) {
-         deleteChar();
-         modeler.rotatey(1);
-      }
-      break;
-   case 'Backspace':
-      if (isShift)
-         deleteAll();
-      else if (codeText.selectionStart < codeText.selectionEnd)
-         deleteRange();
-      else
-         deleteChar();
-      break;
-   case 'ArrowLeft':
-      if (isShift) {
-         modeler.prevTexture();
-         codeText.value = modeler.getTexture();
-         modeler.parseCode(codeText.value);
-      }
-      else {
-         let i = codeText.selectionStart;
-         codeText.selectionStart = codeText.selectionEnd = Math.max(0, i-1);
-      }
-      break;
-   case 'ArrowRight':
-      if (isShift) {
-         modeler.nextTexture();
-         codeText.value = modeler.getTexture();
-         modeler.parseCode(codeText.value);
-      }
-      else {
-         let i = codeText.selectionStart;
-         codeText.selectionStart = codeText.selectionEnd = Math.min(codeText.value.length, i+1);
-      }
-      break;
-   case 'ArrowUp':
-      {
-         let i = Math.min(codeText.value.length - 1, codeText.selectionStart);
-         let i0 = i;
-         while (i0 >= 0 && codeText.value.charAt(i0) != '\n')
-            i0--;
-         let di = i - i0;
-         if (i0 > 0) {
-            i = i0 - 1;
-            while (i >= 0 && codeText.value.charAt(i) != '\n')
-               i--;
-            i = Math.min(i + di, i0 - 1);
+   if(enableModeling) {
+      switch (event.key) {
+         case 'Escape':
+            modeler.setShowingCode(false);
+            break;
+         case '`':
+            deleteChar();
+            modeler.parseCode(codeText.value);
+            break;
+         case ' ':
+         case "'":
+         case '"':
+         case '/':
+            insertChar(event.key);
+            break;
+         case '?':
+            modeler.toggleRubber();
+            break;
+         case 'Enter':
+            if (isShift) {
+               deleteChar();
+               modeler.rotatey(1);
+            }
+            break;
+         case 'Backspace':
+            if (isShift)
+               deleteAll();
+            else if (codeText.selectionStart < codeText.selectionEnd)
+               deleteRange();
+            else
+               deleteChar();
+            break;
+         case 'ArrowLeft':
+            if (isShift) {
+               modeler.prevTexture();
+               codeText.value = modeler.getTexture();
+               modeler.parseCode(codeText.value);
+            }
+            else {
+               let i = codeText.selectionStart;
+               codeText.selectionStart = codeText.selectionEnd = Math.max(0, i-1);
+            }
+            break;
+         case 'ArrowRight':
+            if (isShift) {
+               modeler.nextTexture();
+               codeText.value = modeler.getTexture();
+               modeler.parseCode(codeText.value);
+            }
+            else {
+               let i = codeText.selectionStart;
+               codeText.selectionStart = codeText.selectionEnd = Math.min(codeText.value.length, i+1);
+            }
+            break;
+         case 'ArrowUp':
+            {
+               let i = Math.min(codeText.value.length - 1, codeText.selectionStart);
+               let i0 = i;
+               while (i0 >= 0 && codeText.value.charAt(i0) != '\n')
+                  i0--;
+               let di = i - i0;
+               if (i0 > 0) {
+                  i = i0 - 1;
+                  while (i >= 0 && codeText.value.charAt(i) != '\n')
+                     i--;
+                  i = Math.min(i + di, i0 - 1);
+               }
+               else
+                  i = 0;
+               codeText.selectionStart = codeText.selectionEnd = i;
+            }
+            break;
+         case 'ArrowDown':
+            {
+               let i = codeText.selectionStart;
+               let i0 = i;
+               while (i0 >= 0 && codeText.value.charAt(i0) != '\n')
+                  i0--;
+               let di = i - i0;
+               let i1 = i;
+               while (i1 < codeText.value.length && codeText.value.charAt(i1) != '\n')
+                  i1++;
+               i = Math.min(codeText.value.length, i1 + di);
+               codeText.selectionStart = codeText.selectionEnd = i;
+            }
+            break;
          }
-         else
-            i = 0;
-         codeText.selectionStart = codeText.selectionEnd = i;
-      }
-      break;
-   case 'ArrowDown':
-      {
-         let i = codeText.selectionStart;
-         let i0 = i;
-         while (i0 >= 0 && codeText.value.charAt(i0) != '\n')
-            i0--;
-         let di = i - i0;
-         let i1 = i;
-         while (i1 < codeText.value.length && codeText.value.charAt(i1) != '\n')
-            i1++;
-         i = Math.min(codeText.value.length, i1 + di);
-         codeText.selectionStart = codeText.selectionEnd = i;
-      }
-      break;
    }
 
    wasAlt = wasControl = wasMeta = wasShift = false;
@@ -1226,7 +1271,8 @@ let onKeyUp = event => {
 //////////////////////////////////////// THE MODELER /////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////
 
-let S = [], vm, vmi, computeQuadric, activeSet, implicitSurface;
+let S = [], vm, vmi, computeQuadric, activeSet, implicitSurface,
+    rotatex, rotatey, rotatexState, rotateyState, modelMatrix, isTable = true;
 
 {
    let activeCount = -1;
@@ -1270,10 +1316,7 @@ let S = [], vm, vmi, computeQuadric, activeSet, implicitSurface;
    let mn = -1, mnPrev = -1;
    let name = '';
    let textureState = 0;
-   let rotatex = 0, rotatexState = 0;
-   let rotatey = 0, rotateyState = 0;
    let startTime = Date.now(), prevTime = startTime, fps = 10;    // TO TRACK FRAME RATE
-   let modelMatrix = matrix_translate(0,0,0);
    let xPrev, yPrev, xyTravel;
    let viewMatrix = matrix_identity();
    let viewMatrixInverse = matrix_inverse(viewMatrix);
@@ -1401,9 +1444,10 @@ let S = [], vm, vmi, computeQuadric, activeSet, implicitSurface;
       pgm = window.clay.clayPgm.program;
    }
 
-   this.animate = gl => {
+   this.animate = view => {
       this.updatePgm();
       this.model = model;
+      this.views = views;
       if(window.clay) scenes();
       // if (html.bgWindow)
       //    html.bgWindow.style.left = flash ? -screen.width : 0;
@@ -1412,8 +1456,9 @@ let S = [], vm, vmi, computeQuadric, activeSet, implicitSurface;
 
       if (isModeler) {
          if (window.animate)
-	         window.animate();
-       model.render(vm);
+            window.animate();
+         model.render(vm);
+         model.setControls();
       }
 
       else {
@@ -1456,8 +1501,8 @@ let S = [], vm, vmi, computeQuadric, activeSet, implicitSurface;
    
       time = (Date.now() - startTime) / 1000;
       setUniform('1f', 'uTime', time);                                  // SET GPU TIME
-      let elapsed = time - prevTime;
-      fps = .1 * fps + .9 / elapsed;
+      let deltaTime = time - prevTime;
+      fps = .1 * fps + .9 / deltaTime;
       prevTime = time;
    
       setUniform('1f', 'uOpacity', 1);
@@ -1486,23 +1531,24 @@ let S = [], vm, vmi, computeQuadric, activeSet, implicitSurface;
 
       M.save();
 
-      if (isRotatedView) {
-         M.translate(.2,.8,.2);
-         M.rotateX(.8);
-      }
-      if (!isRotatedView) {
-         M.identity();
-         M.scale(.8);
-      }
       viewMatrix = M.getValue();
       viewMatrixInverse = matrix_inverse(viewMatrix);
 
-       // DRAW THE TABLE
-      M.save();
-      M.translate(0,2,0);
-       draw(cylinderYMesh, '40,16,8', [0,-1.03,0], null, [1,.03,1]);
-       draw(cylinderYMesh, '40,16,8', [0,-1.6,0], null, [.1,0.6,.1]);
-      M.restore();
+      // DRAW THE TABLE
+
+      if (isTable) {
+         let inches = 0.0254,
+             radius     = (70 + 11/16) * inches / 2,
+	     height     = 29 * inches,
+	     thickness  = 0.75 * inches,
+	     legRadius  = 4 * inches / 2,
+	     baseRadius = 24 * inches / 2;
+
+         draw(cylinderYMesh, '40,16,8', [0,height-thickness,0], null, [radius    ,thickness,radius    ]);
+         draw(cylinderYMesh, '40,16,8', [0,height/2        ,0], null, [legRadius ,height/2 ,legRadius ]);
+         draw(cylinderYMesh, '40,16,8', [0,thickness       ,0], null, [baseRadius,thickness,baseRadius]);
+      }
+
       // SHOW CENTERING INDICATOR
 
       if (! isRubber && isCentering)
@@ -1516,7 +1562,7 @@ let S = [], vm, vmi, computeQuadric, activeSet, implicitSurface;
       // SET IMPLICIT SURFACE PROPERTIES
    
       implicitSurface.setBlur(blur);
-      implicitSurface.setDivs(isFewerDivs ? 20 : window.vr || activeState() ? 40 : 60);
+      implicitSurface.setDivs(isFewerDivs ? 15 : activeState() ? 30 : 60);
       implicitSurface.setFaceted(isFaceted);
       implicitSurface.setNoise(textureState);
       implicitSurface.setIsTexture(isTexture);
@@ -1700,9 +1746,9 @@ let S = [], vm, vmi, computeQuadric, activeSet, implicitSurface;
                if (S[n].info) {
                   name += ',' + S[n].info;
                   if (! formMesh[name])
-                                 formMesh[name] = createMesh(64, 32, uvToForm, { form   : S[n].form,
-                                                                  rounded: S[n].rounded,
-                                                                  info   : S[n].info });
+                     formMesh[name] = createMesh(64, 32, uvToForm, { form   : S[n].form,
+                                                                     rounded: S[n].rounded,
+                                                                     info   : S[n].info });
                }
                draw(formMesh[name], materialId, null, null, null, S[n].texture);
                M.restore();
@@ -1798,9 +1844,9 @@ let S = [], vm, vmi, computeQuadric, activeSet, implicitSurface;
 
       // HANDLE ROTATING THE MODEL
    
-      let delta = 2 * elapsed;
+      let delta = 2 * deltaTime;
 
-      let rotateModel = (rotate, rotateState, matrix_rotate) => {
+      let rotateModel = (rotate, rotateState, matrix_rotate, offset) => {
          let rotateTarget = Math.PI / 2 * rotateState;
          if (rotate != rotateTarget) {
             let rotateBy = 0;
@@ -1816,8 +1862,10 @@ let S = [], vm, vmi, computeQuadric, activeSet, implicitSurface;
          }
          return rotate;
       }
+      modelMatrix = matrix_multiply(matrix_translate([0,-1.5,0]), modelMatrix);
       rotatex = rotateModel(rotatex, rotatexState, matrix_rotateX);
       rotatey = rotateModel(rotatey, rotateyState, matrix_rotateY);
+      modelMatrix = matrix_multiply(matrix_translate([0,1.5,0]), modelMatrix);
 
       vm  = matrix_multiply(viewMatrix, modelMatrix);
       vmi = matrix_inverse(vm);
@@ -2400,14 +2448,14 @@ let S = [], vm, vmi, computeQuadric, activeSet, implicitSurface;
    
    // RESPOND TO THE KEYBOARD
 
-   canvas.onKeyPress = key => {
+   canvas.onKeyPress = (key, event) => {
       if (!justPressed && ! isShowingCode && window.interactMode == 1) {
          justPressed = true;
-         this.onKeyDown(key);
+         this.onKeyDown(key, event);
       }
    }
 
-   this.onKeyDown = key => {
+   this.onKeyDown = (key, event) => {
 
       if (key != keyPressed) {
          switch (key) {
@@ -2446,14 +2494,14 @@ let S = [], vm, vmi, computeQuadric, activeSet, implicitSurface;
 
    let ns = () => mn >= 0 ? mn : S.length - 1;
 
-   canvas.onKeyRelease = key => {
+   canvas.onKeyRelease = (key, event) => {
       if (justPressed && ! isShowingCode && window.interactMode == 1) {
-         this.onKeyUp(key);
+         this.onKeyUp(key, event);
          justPressed = false;
       }
    }
 
-   this.onKeyUp = key => {
+   this.onKeyUp = (key, event) => {
 
       flash = false;
       keyPressed = -1;
@@ -2462,289 +2510,305 @@ let S = [], vm, vmi, computeQuadric, activeSet, implicitSurface;
       let ch = String.fromCharCode(key);
       keyChar = ch;
 
-      // TYPE 0-9 TO SET BLOB COLOR
-
-      if (S.length > 0 && ch >= '0' && ch <= '9') {
-         saveForUndo();
-         let color = 'color' + (key - 48) + (isLightColor ? 'l' : '');
-
-         // SET COLOR OVER BACKGROUND TO COLOR ALL UNCOLORED BLOBS.
-
-         if (mn < 0) {
-            defaultColor = color;
-            for (let n = 0 ; n < S.length ; n++)
-               if (! S[n].isColored)
-                  S[n].color = defaultColor;
-         }
-
-         // SET COLOR OVER A BLOB TO EXPLICITLY COLOR IT.
-
-         else {
-            let sym = S[ns()].symmetry ? 1 : 0;
-            for (let i = 0 ; i <= sym ; i++) {
-               S[I(ns())+i].color = color;
-               S[I(ns())+i].isColored = true;
-            }
-         }
-
-         isLightColor = false;
-         return;
+      if (event.ctrlKey) {
+         model._doControlAction(event.key);
       }
 
+      isControl = false;
+
       switch (key) {
-      case 8: // DELETE
-         if (isRubber)
-            break;
-         if (S.length > 0) {
-            saveForUndo();
-            deleteSelectedBlob();            // DELETE THE SELECTED BLOB
-         }
-         break;
-      case 16:
-         isShift = false;
-         break;
-      case 17:
-         isControl = false;
-         break;
-      case 18:
-         modelMatrix = matrix_translate(0,0,0);
-         mn = findBlob(xPrev, yPrev);
-         isAlt = false;
-         break;
-      case 27:
-         this.setShowingCode(true);          // ESC TO SHOW/HIDE CODE EDITOR
-         break;
       case 37: // LEFT ARROW
          rotateyState--;                  // ROTATE LEFT
+         return;
+      case 38: // UP ARROW
+         rotatexState++;                     // ROTATE UP
          return;
       case 39: // RIGHT ARROW
          rotateyState++;                  // ROTATE RIGHT
          return;
-      case 187: // '='
-         if (S.length > 0) {
-            saveForUndo();
-            let sym = S[ns()].symmetry ? 1 : 0;
-            for (let i = 0 ; i <= sym ; i++)
-               setDepthToMaxOfWidthAndHeight(S[I(ns())+i]);
-            activeSet(true);
-         }
-         return;
-      case 189: // '-'
-         if (isRubber)
-            break;
-         if (S.length > 0) {               // MAKE NEGATIVE
-            saveForUndo();
-            let sym = S[ns()].symmetry ? 1 : 0;
-            for (let i = 0 ; i <= sym ; i++)
-               S[I(ns())+i].sign = -S[I(ns())+i].sign;
-            activeSet(true);
-         }
-         break;
-      case 190: // '.'
-         if (S.length > 0) {               // TOGGLE IS BLOBBY
-            saveForUndo();
-            let sym = S[ns()].symmetry ? 1 : 0;
-            for (let i = 0 ; i <= sym ; i++)
-               S[I(ns())+i].isBlobby = ! S[I(ns())+i].isBlobby;
-            activeSet(true);
-         }
-         break;
-      case 191: // '/'
-         isRubber = ! isRubber;
-         break;
-      case 192: // '`'
-         isLightColor = ! isLightColor;    // LIGHT COLOR
-         break;
-      case 219: // '['
-         saveForUndo();
-         if (S.length > 0) {
-            isTranslating = true;
-            transform(ns(), 0,0,-.05);     // AWAY
-            isTranslating = false;
-         }
-         break;
-      case 220: // '\'
-         saveForUndo();
-         isCentering     = false;
-         isMirroring     = false;
-         isRubber        = false;
-         isShowingJoints = false;
-         isWalking       = false;
-         isWiggling      = false;
-         textureState      = 0;
-         rotatexState    = 0;
-         rotateyState    = 0;
-         S = [];                           // DELETE ALL BLOBS
-         mn = -1;
-         activeSet(true);
-         break;
-      case 221: // ']'
-         saveForUndo();
-         if (S.length > 0) {
-            isTranslating = true;
-            transform(ns(), 0,0,.05);      // FORWARD
-            isTranslating = false;
-         }
-         break;
-      }
-
-      if (isControl) {
-         switch (ch) {
-         case 'Y':
-            redo();
-            break;
-         case 'Z':
-            undo();
-            break;
-	      default:
-            model._doControlAction(ch);
-	         break;
-         }
+      case 40: // DOWN ARROW
+         rotatexState--;                     // ROTATE DOWN
          return;
       }
 
-      if (isShift) {
+      if(enableModeling) {
+         // TYPE 0-9 TO SET BLOB COLOR
+         if (S.length > 0 && ch >= '0' && ch <= '9') {
+            saveForUndo();
+            let color = 'color' + (key - 48) + (isLightColor ? 'l' : '');
+   
+            // SET COLOR OVER BACKGROUND TO COLOR ALL UNCOLORED BLOBS.
+   
+            if (mn < 0) {
+               defaultColor = color;
+               for (let n = 0 ; n < S.length ; n++)
+                  if (! S[n].isColored)
+                     S[n].color = defaultColor;
+            }
+   
+            // SET COLOR OVER A BLOB TO EXPLICITLY COLOR IT.
+   
+            else {
+               let sym = S[ns()].symmetry ? 1 : 0;
+               for (let i = 0 ; i <= sym ; i++) {
+                  S[I(ns())+i].color = color;
+                  S[I(ns())+i].isColored = true;
+               }
+            }
+   
+            isLightColor = false;
+            return;
+         }
+   
+         switch (key) {
+         case 8: // DELETE
+            if (isRubber)
+               break;
+            if (S.length > 0) {
+               saveForUndo();
+               deleteSelectedBlob();            // DELETE THE SELECTED BLOB
+            }
+            break;
+         case 16:
+            isShift = false;
+            break;
+         case 17:
+            isControl = false;
+            break;
+         case 18:
+            modelMatrix = matrix_translate(0,0,0);
+            mn = findBlob(xPrev, yPrev);
+            isAlt = false;
+            break;
+         case 27:
+            this.setShowingCode(true);          // ESC TO SHOW/HIDE CODE EDITOR
+            break;
+         case 187: // '='
+            if (S.length > 0) {
+               saveForUndo();
+               let sym = S[ns()].symmetry ? 1 : 0;
+               for (let i = 0 ; i <= sym ; i++)
+                  setDepthToMaxOfWidthAndHeight(S[I(ns())+i]);
+               activeSet(true);
+            }
+            return;
+         case 189: // '-'
+            if (isRubber)
+               break;
+            if (S.length > 0) {               // MAKE NEGATIVE
+               saveForUndo();
+               let sym = S[ns()].symmetry ? 1 : 0;
+               for (let i = 0 ; i <= sym ; i++)
+                  S[I(ns())+i].sign = -S[I(ns())+i].sign;
+               activeSet(true);
+            }
+            break;
+         case 190: // '.'
+            if (S.length > 0) {               // TOGGLE IS BLOBBY
+               saveForUndo();
+               let sym = S[ns()].symmetry ? 1 : 0;
+               for (let i = 0 ; i <= sym ; i++)
+                  S[I(ns())+i].isBlobby = ! S[I(ns())+i].isBlobby;
+               activeSet(true);
+            }
+            break;
+         case 191: // '/'
+            isRubber = ! isRubber;
+            break;
+         case 192: // '`'
+            isLightColor = ! isLightColor;    // LIGHT COLOR
+            break;
+         case 219: // '['
+            saveForUndo();
+            if (S.length > 0) {
+               isTranslating = true;
+               transform(ns(), 0,0,-.05);     // AWAY
+               isTranslating = false;
+            }
+            break;
+         case 220: // '\'
+            saveForUndo();
+            isCentering     = false;
+            isMirroring     = false;
+            isRubber        = false;
+            isShowingJoints = false;
+            isWalking       = false;
+            isWiggling      = false;
+            textureState      = 0;
+            rotatexState    = 0;
+            rotateyState    = 0;
+            S = [];                           // DELETE ALL BLOBS
+            mn = -1;
+            activeSet(true);
+            break;
+         case 221: // ']'
+            saveForUndo();
+            if (S.length > 0) {
+               isTranslating = true;
+               transform(ns(), 0,0,.05);      // FORWARD
+               isTranslating = false;
+            }
+            break;
+         }
+   
+         if (isControl) {
+            switch (ch) {
+            case 'Y':
+               redo();
+               break;
+            case 'Z':
+               undo();
+               break;
+            default:
+               model._doControlAction(ch);
+               break;
+            }
+            return;
+         }
+   
+         if (isShift) {
+            switch (ch) {
+            case 'B':
+               isShowingBounds = ! isShowingBounds;
+               break;
+            case 'E':
+               displacementTextureType = (displacementTextureType + 1) % 3;
+               activeSet(true);
+               break;
+            case 'F':
+               isFewerDivs = ! isFewerDivs;
+               break;
+            case 'I':
+               isTextureSrc = ! isTextureSrc;
+               break;
+            case 'M':
+               isModeler = ! isModeler;
+               if (! isModeler) {
+                  S = [];
+                  initMaterials();
+                  frameCount = 0;
+               }
+               else
+                  activeSet(true);
+               break;
+            case 'N':
+               isFaceted = ! isFaceted;
+               break;
+            case 'Q':
+               console.log(JSON.stringify(saveFunction()));
+               break;
+            case 'T':
+               isTexture = ! isTexture;
+               this.setShowingCode(isShowingCode);
+               isNewTextureCode = true;
+               break;
+            case 'V':
+               isRotatedView = ! isRotatedView;
+               break;
+            case 'X':
+               isExperiment = true;
+               break;
+            }
+            return;
+         }
+   
          switch (ch) {
+         case 'A':
          case 'B':
-            isShowingBounds = ! isShowingBounds;
+         case 'D':
+         case 'X':
+         case 'Y':
+         case 'Z':
+            if (! isRubber && ! isCreating) {
+               saveForUndo();
+               createBegin(xPrev, yPrev);
+               if (ch == 'A') S[mn].form = 'sphere';
+               if (ch == 'B') S[mn].form = 'cube';
+               if (ch == 'D') S[mn].form = 'donut';
+               if (ch == 'X') S[mn].form = 'tubeX';
+               if (ch == 'Y') S[mn].form = 'tubeY';
+               if (ch == 'Z') S[mn].form = 'tubeZ';
+               isCreating = true;
+            }
             break;
-         case 'E':
-            displacementTextureType = (displacementTextureType + 1) % 3;
-            activeSet(true);
+   
+         case 'C':
+            if (mn >= 0 && S[mn] && S[mn].M) {
+               saveForUndo();
+               S[mn].M[12] = 0;                    // CENTER BLOB AT CURSOR
+               computeQuadric(S[mn]);
+            }
+            else                                   // BUT IF OVER BACKGROUND
+               isCentering = ! isCentering;        // TOGGLE CENTERING MODE
             break;
          case 'F':
-            isFewerDivs = ! isFewerDivs;
+            textureState = textureState == 4 ? 0 : 4;
+            break;
+         case 'G':
+            isWalking = ! isWalking;
+            break;
+         case 'H':
+            textureState = textureState == 5 ? 0 : 5;
             break;
          case 'I':
-            isTextureSrc = ! isTextureSrc;
+            // html.helpWindow1.style.zIndex = 1 - html.helpWindow1.style.zIndex;
+            // html.helpWindow2.style.zIndex = 1 - html.helpWindow2.style.zIndex;
+            break;
+         case 'J':
+            isShowingJoints = ! isShowingJoints;
+            break;
+         case 'K':
+            if (S.length > 0) {                    // BLUR EDGES
+               saveForUndo();
+               S[ns()].rounded = ! S[ns()].rounded;
+               activeSet(true);
+            }
+            break;
+         case 'L':
+            isLengthening = true;
             break;
          case 'M':
-            isModeler = ! isModeler;
-            if (! isModeler) {
-               S = [];
-               initMaterials();
-               frameCount = 0;
-            }
-            else
-               activeSet(true);
+            isMirroring = ! isMirroring;
             break;
          case 'N':
-            isFaceted = ! isFaceted;
+            textureState = textureState == 1 ? 0 : 1;
+            break;
+         case 'O':
+            // if (isShift)
+            //    projectManager.clearAll();        // CLEAR ALL PROJECT DATA
+            // else
+            //    projectManager.clearNames();      // CLEAR PROJECT NAMES
+            activeSet(true);
+            break;
+         case 'P':
+            projectManager.choice(loadFunction); // USER CHOOSES PROJECT
             break;
          case 'Q':
-            console.log(JSON.stringify(saveFunction()));
+            textureState = textureState == 2 ? 0 : 2;
+            break;
+         case 'R':
+            saveForUndo();
+            isRotating = true;
+            break;
+         case 'S':
+            saveForUndo();
+            isScaling = true;
             break;
          case 'T':
-            isTexture = ! isTexture;
-            this.setShowingCode(isShowingCode);
-            isNewTextureCode = true;
+            saveForUndo();
+            isTranslating = true;
+            break;
+         case 'U':
+            saveForUndo();
+            isUniformScaling = true;
             break;
          case 'V':
-            isRotatedView = ! isRotatedView;
+            textureState = textureState == 3 ? 0 : 3;
             break;
-         case 'X':
-            isExperiment = true;
+         case 'W':
+            isWiggling = ! isWiggling;
             break;
          }
-         return;
-      }
-
-      switch (ch) {
-      case 'A':
-      case 'B':
-      case 'D':
-      case 'X':
-      case 'Y':
-      case 'Z':
-         if (! isRubber && ! isCreating) {
-            saveForUndo();
-            createBegin(xPrev, yPrev);
-            if (ch == 'A') S[mn].form = 'sphere';
-            if (ch == 'B') S[mn].form = 'cube';
-            if (ch == 'D') S[mn].form = 'donut';
-            if (ch == 'X') S[mn].form = 'tubeX';
-            if (ch == 'Y') S[mn].form = 'tubeY';
-            if (ch == 'Z') S[mn].form = 'tubeZ';
-            isCreating = true;
-         }
-         break;
-
-      case 'C':
-         if (mn >= 0 && S[mn] && S[mn].M) {
-            saveForUndo();
-            S[mn].M[12] = 0;                    // CENTER BLOB AT CURSOR
-            computeQuadric(S[mn]);
-         }
-         else                                   // BUT IF OVER BACKGROUND
-            isCentering = ! isCentering;        // TOGGLE CENTERING MODE
-         break;
-      case 'F':
-         textureState = textureState == 4 ? 0 : 4;
-         break;
-      case 'G':
-         isWalking = ! isWalking;
-         break;
-      case 'H':
-         textureState = textureState == 5 ? 0 : 5;
-         break;
-      case 'I':
-         // html.helpWindow1.style.zIndex = 1 - html.helpWindow1.style.zIndex;
-         // html.helpWindow2.style.zIndex = 1 - html.helpWindow2.style.zIndex;
-         break;
-      case 'J':
-         isShowingJoints = ! isShowingJoints;
-         break;
-      case 'K':
-         if (S.length > 0) {                    // BLUR EDGES
-            saveForUndo();
-            S[ns()].rounded = ! S[ns()].rounded;
-            activeSet(true);
-         }
-         break;
-      case 'L':
-         isLengthening = true;
-         break;
-      case 'M':
-         isMirroring = ! isMirroring;
-         break;
-      case 'N':
-         textureState = textureState == 1 ? 0 : 1;
-         break;
-      case 'O':
-         // if (isShift)
-         //    projectManager.clearAll();        // CLEAR ALL PROJECT DATA
-         // else
-         //    projectManager.clearNames();      // CLEAR PROJECT NAMES
-         activeSet(true);
-         break;
-      case 'P':
-         projectManager.choice(loadFunction); // USER CHOOSES PROJECT
-         break;
-      case 'Q':
-         textureState = textureState == 2 ? 0 : 2;
-         break;
-      case 'R':
-         saveForUndo();
-         isRotating = true;
-         break;
-      case 'S':
-         saveForUndo();
-         isScaling = true;
-         break;
-      case 'T':
-         saveForUndo();
-         isTranslating = true;
-         break;
-      case 'U':
-         saveForUndo();
-         isUniformScaling = true;
-         break;
-      case 'V':
-         textureState = textureState == 3 ? 0 : 3;
-         break;
-      case 'W':
-         isWiggling = ! isWiggling;
-         break;
       }
    }
 
@@ -2790,17 +2854,46 @@ for (let s = 3 ; s < 100 ; s *= 2)
 ////////////// GIVE PROGRAMMERS THE OPTION TO BUILD AND ANIMATE THEIR OWN MODEL. /////////////
 //////////////////////////////////////////////////////////////////////////////////////////////
 
+const _animateNoop = () => {};
+
+let wasInteractMode = true;
 
 function Node(_form) {
    let id = uniqueID(),
        m = new Matrix(),
        form = _form,
        previousTime,
-  rm;
+       rm;
+
+   
+   this.setControls = () => {
+      if (interactMode != wasInteractMode) {
+         messages.innerHTML = '<button onclick="interactMode=!interactMode">mode</button>';
+         if (interactMode) {
+            let message = ' control keys: ';
+            for (let ch in this._controlActions)
+               message += '<button onclick=controlAction("' + ch + '")>' + ch + '</button>';
+            messages.innerHTML += message;
+         }
+         wasInteractMode = interactMode;
+      }
+   }
+
+   this.resetControls = () => {
+      messages.innerHTML = '<button onclick="interactMode=!interactMode">mode</button>';
+      if (interactMode) {
+         let message = ' control keys: ';
+         for (let ch in this._controlActions)
+            message += '<button onclick=controlAction("' + ch + '")>' + ch + '</button>';
+         messages.innerHTML += message;
+      }
+      wasInteractMode = false;
+   }
 
    this.clear = () => {
       previousTime = 0;
       rm = matrix_identity;
+      this._animate  = _animateNoop;
       this._bevel    = false;
       this._blend    = false;
       this._blur     = .5;
@@ -2811,10 +2904,13 @@ function Node(_form) {
       this._parent   = null;
       this._texture  = '';
       this._precision = 1;
- m.identity();
- this._controlActions = {};
- implicitSurface.remesh();
- return this;
+      m.identity();
+      this._controlActions = {};
+      this.resetControls();
+      implicitSurface.remesh();
+      rotatex = rotatey = rotatexState = rotateyState = 0;
+      modelMatrix = matrix_identity();
+      return this;
    }
 
    this.clear();
@@ -2856,93 +2952,92 @@ function Node(_form) {
     this._children.splice(i, 1);
       return this;
    }
-      this.animate  = func    => { this._animate = func; return this; }
-      this.identity = ()      => { m.identity();         return this; }
-      this.move     = (x,y,z) => { m.translate(x,y,z);   return this; }
-      this.turnX    = theta   => { m.rotateX(theta);     return this; }
-      this.turnY    = theta   => { m.rotateY(theta);     return this; }
-      this.turnZ    = theta   => { m.rotateZ(theta);     return this; }
-      this.scale    = (x,y,z) => { m.scale(x,y,z);       return this; }
-      this.color    = (r,g,b) => { this._color = typeof r === 'string' ||
-                                                 Array.isArray(r) ? r : [r,g,b]; return this; }
-      this.blur     = value   => { this._blur = value;   return this; }
-      this.info     = value   => { if (this.prop('_blend') && this._info != value) activeSet(true);
-                                   this._info = value;   return this; }
-      this.texture  = src     => { this._texture = src;  return this; }
-      this.bevel    = tf      => { this._bevel = tf === undefined ? true : tf; return this; }
-      this.blend    = tf      => { if (this._blend != tf) activeSet(true);
-                                   this._blend = tf === undefined ? false : tf; return this; }
-      this.melt     = tf      => { this._melt  = tf === undefined ? true : tf; return this; }
-      this.precision = value   => { this._precision = value; return this; }
-      this.render = pm => {
-         // if (this == model) {
-         //    let s = '<font color=white face=helvetica><small><small><small><p>';
-         //    s += '<b><big>' + modelData[modelId].name + '</big></b><p>';
-         //         for (let ch in this._controlActions)
-         //            s += '<font face=courier><b>CTRL-' + ch.toLowerCase() + '</b></font> ' +
-         //            this._controlActions[ch].label + '<br>';
-         //       //   html.inactiveCode.innerHTML = s;
-         // }
-         implicitSurface.setPrecision(this.prop('_precision'));
-         let color = this.prop('_color');
-         if (Array.isArray(color)) {
-            let materialName = '' + id;
-            let r = color[0], g = color[1], b = color[2];
-            materials[materialName] = { ambient : [.2*r ,.2*g ,.2*b ],
-                                        diffuse : [.8*r ,.8*g ,.8*b ],
-                                        specular: [.9,.9,.9,20] };
-            color = materialName;
-         }
-         if (this._animate) {
-            this.time = Date.now() / 1000 - startTime;
-            this.elapsed = previousTime ? this.time - previousTime : 1/30;
-            if (this.prop('_melt'))
-               activeSet(true);
-            this._animate(this);
-            previousTime = this.time;
-         }
-         rm = matrix_multiply(pm, m.getValue());
-         if (form == 'root')
-            S = [];
-         else if (form) {
-            let s = {
-               blur: this.prop('_blur'),
-               color: color,
-               id: id,
-               info: this.prop('_info'),
-               isBlobby: this.prop('_blend'),
-               isColored: true,
-               rounded: this.prop('_bevel'),
-               sign: 1,
-               symmetry: 0,
-               texture: this.prop('_texture'),
-               form: form,
-               M: matrix_multiply(vmi, rm)
-            };
-            computeQuadric(s);
-            S.push(s);
-         }
-         for (let i = 0 ; i < this._children.length ; i++)
-            this._children[i].render(rm);
-      }
+   this.animate   = func    => { this._animate = func; return this; }
+   this.identity  = ()      => { m.identity();         return this; }
+   this.aimX      = vec     => { m.aimX(vec);          return this; }
+   this.aimY      = vec     => { m.aimY(vec);          return this; }
+   this.aimZ      = vec     => { m.aimZ(vec);          return this; }
+   this.move      = (x,y,z) => { m.translate(x,y,z);   return this; }
+   this.getMatrix = ()      => { return m.getValue();               }
+   this.setMatrix = value   => { m.setValue(value);    return this; }
+   this.getMeshInfo = ()    => { return implicitSurface.meshInfo(); }
+   this.setTable  = tf      => { isTable = tf;         return this; }
+   this.getDivs   = ()      => { return implicitSurface.divs();     }
+   this.turnX     = theta   => { m.rotateX(theta);     return this; }
+   this.turnY     = theta   => { m.rotateY(theta);     return this; }
+   this.turnZ     = theta   => { m.rotateZ(theta);     return this; }
+   this.scale     = (x,y,z) => { m.scale(x,y,z);       return this; }
+   this.color     = (r,g,b) => { this._color = typeof r === 'string' ||
+                                              Array.isArray(r) ? r : [r,g,b]; return this; }
+   this.blur      = value   => { this._blur = value;   return this; }
+   this.info      = value   => { if (this.prop('_blend') && this._info != value) activeSet(true);
+                                this._info = value;   return this; }
+   this.texture   = src     => { this._texture = src;  return this; }
+   this.bevel     = tf      => { this._bevel = tf === undefined ? true : tf; return this; }
+   this.blend     = tf      => { if (this._blend != tf) activeSet(true);
+                                this._blend = tf === undefined ? false : tf; return this; }
+   this.melt      = tf      => { this._melt  = tf === undefined ? true : tf; return this; }
+   this.precision = value   => { this._precision = value; return this; }
+
+   window.controlAction = ch => {
+      if (model._controlActions[ch])
+         model._controlActions[ch].func();
    }
+
+   this.render = pm => {
+
+      implicitSurface.setPrecision(this.prop('_precision'));
+      let color = this.prop('_color');
+      if (Array.isArray(color)) {
+         let materialName = '' + id;
+         let r = color[0], g = color[1], b = color[2];
+         materials[materialName] = { ambient : [.2*r ,.2*g ,.2*b ],
+                                     diffuse : [.8*r ,.8*g ,.8*b ],
+                                     specular: [.9,.9,.9,20] };
+         color = materialName;
+      }
+      if (this._animate) {
+         this.time = Date.now() / 1000 - startTime;
+         this.deltaTime = previousTime ? this.time - previousTime : 1/30;
+         if (this.prop('_melt'))
+            activeSet(true);
+         try {
+            this._animate(this);
+         } catch (e) {
+            console.error("Error in animate()\n", e);
+         }
+         previousTime = this.time;
+      }
+      rm = matrix_multiply(pm, m.getValue());
+      if (form == 'root')
+         S = [];
+      else if (form) {
+         let s = {
+            blur: this.prop('_blur'),
+            color: color,
+            id: id,
+            info: this.prop('_info'),
+            isBlobby: this.prop('_blend'),
+            isColored: true,
+            rounded: this.prop('_bevel'),
+            sign: 1,
+            symmetry: 0,
+            texture: this.prop('_texture'),
+            form: form,
+            M: matrix_multiply(vmi, rm)
+         };
+         computeQuadric(s);
+         S.push(s);
+      }
+      for (let i = 0 ; i < this._children.length ; i++)
+         this._children[i].render(rm);
+   }
+}
 
 // EXPOSE A ROOT NODE FOR EXTERNAL MODELING.
 
    let model = new Node('root');
    this.model = model;
-
    let startTime = Date.now() / 1000;
-
-   // let modelData = [], modelId = 0;
-   // this.defineModel = (name, func) => modelData.push({name:name, func:func});
-   // this.selectModel = () => {
-   //    modelData[modelId].func(model);
-   //    model.control('X', 'next model', () => {
-   //       model.clear();
-   //       modelId = (modelId + 1) % modelData.length;
-   //       this.selectModel();
-   //    });
-   // }
 }
 
