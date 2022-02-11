@@ -134,7 +134,7 @@ export class InlineViewerHelper {
   }
 
   update() {
-    keyboardInput.updateKeyState();
+
     if(interactMode == 0) {
       if (keyboardInput.keyIsDown(keyboardInput.KEY_A)) {
         // console.log("strafe left");

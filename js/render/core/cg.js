@@ -68,6 +68,21 @@ export let mAimZ = Z => {
    return [ X[0],X[1],X[2],0, Y[0],Y[1],Y[2],0, Z[0],Z[1],Z[2],0, 0,0,0,1 ];
 }
 
+export let mHitRect = (A, B) => {
+   let L = [[0,0,1,0],[1,0,0,1],[-1,0,0,1],[0,1,0,1],[0,-1,0,1]];
+   let M = mTranspose(mMultiply(mInverse(B), A));
+   for (let i = 0 ; i < L.length ; i++)
+      L[i] = mTransform(M, L[i]);
+   let z = -L[0][3] / L[0][2];
+   if (z > 0)
+      return null;
+   let F = i => z * L[i][2] + L[i][3];
+   for (let i = 1 ; i < L.length ; i++)
+      if (F(i) < 0)
+         return null;
+   return [F(1)/2, F(3)/2];
+}
+
 export let mIdentity = () => [1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1];
 
 export let mInverse = src => {

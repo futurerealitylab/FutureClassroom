@@ -1,5 +1,7 @@
 "use strict";
-import { scenes } from "../../scenes/scenes.js";
+import { scenes } from "/js/handle_scenes.js";
+
+import * as keyboardInput from "../../util/input_keyboard.js";
 
 export function Clay(gl, canvas) {
    let clayPgm = function () {
@@ -271,11 +273,11 @@ this.addEventListenersToCanvas = function(canvas) {
       case 222: // '
          e.preventDefault();
       }
-      canvas.onKeyPress(e.keyCode);
+      canvas.onKeyPress(e.keyCode, e);
    }, true);
 
    window.addEventListener('keyup', function(e) {
-      canvas.onKeyRelease(e.keyCode);
+      canvas.onKeyRelease(e.keyCode, e);
    }, true);
 }
 
@@ -517,8 +519,8 @@ let permuteCoords = mesh => {
 let toruszMesh    = createMesh(32, 16, uvToTorus, .37);
 let torusxMesh    = permuteCoords(toruszMesh);
 let torusyMesh    = permuteCoords(torusxMesh);
-let sphereMesh   = createMesh(32, 16, uvToSphere);
-let tubeMesh     = createMesh(32, 2, uvToTube);
+let sphereMesh    = createMesh(32, 16, uvToSphere);
+let tubeMesh      = createMesh(32,  2, uvToTube);
 let diskzMesh     = createMesh(32,  2, uvToDisk);
 let diskxMesh     = permuteCoords(diskzMesh);
 let diskyMesh     = permuteCoords(diskxMesh);
@@ -591,7 +593,7 @@ const SPHERE    = 0,
       DONUT     = 5;
 
 function Blobs() {
-   let time = 0, textureState = 0, textureSrc = '', data, blurFactor = 0.5;
+   let time = 0, textureState = 0, textureSrc = '', data, blurFactor = 0.5, bounds;
    this.isTexture = true;
 
    // CONVERT AN IMPLICIT FUNCTION TO A TRIANGLE MESH
@@ -641,14 +643,14 @@ function Blobs() {
       // THE SIX POSSIBLE INTERMEDIATE PATHS THROUGH A TETRAHEDRON
 
       let di1 = [1,0,0,1,0,0], dj1 = [0,1,0,0,1,0], dk1 = [0,0,1,0,0,1],
-            di2 = [1,0,1,1,1,0], dj2 = [1,1,0,0,1,1], dk2 = [0,1,1,1,0,1];
+          di2 = [1,0,1,1,1,0], dj2 = [1,1,0,0,1,1], dk2 = [0,1,1,1,0,1];
 
       // THERE ARE 16 CASES TO CONSIDER
 
       let cases = [ [0         ], [1, 0,1,2,3], [1, 1,2,0,3], [2, 0,1,2,3],
-                     [1, 2,3,0,1], [2, 0,2,3,1], [2, 1,2,0,3], [1, 3,1,2,0],
-                     [1, 3,0,2,1], [2, 0,3,1,2], [2, 1,3,2,0], [1, 2,1,0,3],
-                     [2, 2,3,0,1], [1, 1,3,0,2], [1, 0,3,2,1], [0         ] ];
+                    [1, 2,3,0,1], [2, 0,2,3,1], [2, 1,2,0,3], [1, 3,1,2,0],
+                    [1, 3,0,2,1], [2, 0,3,1,2], [2, 1,3,2,0], [1, 2,1,0,3],
+                    [2, 2,3,0,1], [1, 1,3,0,2], [1, 0,3,2,1], [0         ] ];
 
       // COMPUTE THE ACTIVE VOLUME
 
@@ -675,7 +677,7 @@ function Blobs() {
          for (j = lo[1] ; j <= hi[1] ; j++)
          for (i = lo[0] ; i <= hi[0] ; i++) {
             k == lo[0] ? setV(i,j,k, this.eval(i2t(i), i2t(j), i2t(k)))
-            : deleteV(i,j,k-1);
+                       : deleteV(i,j,k-1);
             setV(i,j,k+1, this.eval(i2t(i), i2t(j), i2t(k+1)));
          }
 
@@ -687,7 +689,7 @@ function Blobs() {
                let C03 = (getV(i,j,k) > 0) << 0 | (getV(i+1,j+1,k+1) > 0) << 3;
                for (let p = 0 ; p < 6 ; p++) {
                   let C = cases [ C03 | (getV(i+di1[p],j+dj1[p],k+dk1[p]) > 0) << 1
-                                       | (getV(i+di2[p],j+dj2[p],k+dk2[p]) > 0) << 2 ];
+                                      | (getV(i+di2[p],j+dj2[p],k+dk2[p]) > 0) << 2 ];
                   if (C[0]) {                                // number of triangles in simplex.
                      S[1] = di1[p] | dj1[p]<<1 | dk1[p]<<2;  // assign 2nd corner of simplex.
                      S[2] = di2[p] | dj2[p]<<1 | dk2[p]<<2;  // assign 3rd corner of simplex.
@@ -701,7 +703,7 @@ function Blobs() {
       // SMOOTH THE MESH
 
       let Q = Array(P.length).fill(0),
-            A = Array(P.length).fill(0);
+          A = Array(P.length).fill(0);
       for (let n = 0 ; n < T.length ; n += 3) {
          let I = [ 3 * T[n], 3 * T[n+1], 3 * T[n+2] ];
          for (let i = 0 ; i < 3 ; i++) {
@@ -735,16 +737,16 @@ function Blobs() {
          N[a+1] + N[b+1] + N[c+1],
          N[a+2] + N[b+2] + N[c+2] ];
          if (isFaceted) {
-         let normal = normalize(normalDirection);
-         for (let j = 0 ; j < 3 ; j++)
-         N[a+j] = N[b+j] = N[c+j] = normal[j];
+            let normal = normalize(normalDirection);
+            for (let j = 0 ; j < 3 ; j++)
+               N[a+j] = N[b+j] = N[c+j] = normal[j];
          }
 
          let addVertex = a => {
             let p  = P.slice(a, a+3),
                   n  = N.slice(a, a+3), 
                   uv = n[2] > 0 ? [ .5 + .5*p[0], .5 - .5*p[1] ] :
-                                 [ n[0]<.5 ? 0 : 1, n[1]>.5 ? 1 : 0 ];
+                                  [ n[0]<.5 ? 0 : 1, n[1]>.5 ? 1 : 0 ];
             let v = vertexArray(p, n, [1,0,0], uv, [1,1,1], [1,0,0,0,0,0]);
             for (let j = 0 ; j < VERTEX_SIZE ; j++)
                vertices.push(v[j]);
@@ -995,7 +997,7 @@ function Blobs() {
                wx = W[0], wy = W[1], wz = W[2],
                A =   a*wx*wx + b*wx*wy + c*wz*wx + e*wy*wy +   f*wy*wz + h*wz*wz,
                B = 2*a*wx*vx + b*wx*vy + b*wy*vx + c*wz*vx +   c*wx*vz + d*wx +
-                  2*e*wy*vy + f*wy*vz + f*wz*vy + g*wy    + 2*h*wz*vz + i*wz,
+                   2*e*wy*vy + f*wy*vz + f*wz*vy + g*wy    + 2*h*wz*vz + i*wz,
                C =   a*vx*vx + b*vx*vy + c*vz*vx + d*vx    +   e*vy*vy +
                      f*vy*vz + g*vy    + h*vz*vz + i*vz    +   j,
                t = solveQuadraticEquation(A,B,C),
@@ -1013,8 +1015,8 @@ function Blobs() {
             Q.push(QA[i] + QB[i] + QC[i]);
          Q[9] -= 1;
          bounds.push([zBounds(P, 1,2,0, Q, 4,5,1,6,7,2,8,0,3,9),
-                        zBounds(P, 2,0,1, Q, 7,2,5,8,0,1,3,4,6,9),
-                        zBounds(P, 0,1,2, Q, 0,1,2,3,4,5,6,7,8,9)]);
+                      zBounds(P, 2,0,1, Q, 7,2,5,8,0,1,3,4,6,9),
+                      zBounds(P, 0,1,2, Q, 0,1,2,3,4,5,6,7,8,9)]);
       }
       return bounds;
    }
@@ -1033,6 +1035,8 @@ function ImplicitSurface() {
    this.setIsTexture  = value => blobs.isTexture = value;
    this.setPrecision  = value => precision = value;
    this.mesh          = () => mesh;
+   this.meshInfo      = () => { return { mesh: mesh, divs: divs }; }
+   this.divs          = () => divs;
    this.remesh        = () => mesh = null;
    this.bounds        = t => blobs.innerBounds;
 
@@ -1268,7 +1272,7 @@ let onKeyUp = event => {
 //////////////////////////////////////////////////////////////////////////////////////////////
 
 let S = [], vm, vmi, computeQuadric, activeSet, implicitSurface,
-    rotatex, rotatey, rotatexState, rotateyState, modelMatrix;
+    rotatex, rotatey, rotatexState, rotateyState, modelMatrix, isTable = true;
 
 {
    let activeCount = -1;
@@ -1526,26 +1530,25 @@ let S = [], vm, vmi, computeQuadric, activeSet, implicitSurface,
       isExperiment = false;
 
       M.save();
-/*
-      if (isRotatedView) {
-         M.translate(.2,.8,.2);
-         M.rotateX(.8);
-      }
-      if (!isRotatedView) {
-         M.identity();
-         M.scale(.8);
-      }
-*/
 
       viewMatrix = M.getValue();
       viewMatrixInverse = matrix_inverse(viewMatrix);
 
-       // DRAW THE TABLE
-      M.save();
-      M.translate(0,2,0);
-       draw(cylinderYMesh, '40,16,8', [0,-1.03,0], null, [1,.03,1]);
-       draw(cylinderYMesh, '40,16,8', [0,-1.6,0], null, [.1,0.6,.1]);
-      M.restore();
+      // DRAW THE TABLE
+
+      if (isTable) {
+         let inches = 0.0254,
+             radius     = (70 + 11/16) * inches / 2,
+	     height     = 29 * inches,
+	     thickness  = 0.75 * inches,
+	     legRadius  = 4 * inches / 2,
+	     baseRadius = 24 * inches / 2;
+
+         draw(cylinderYMesh, '40,16,8', [0,height-thickness,0], null, [radius    ,thickness,radius    ]);
+         draw(cylinderYMesh, '40,16,8', [0,height/2        ,0], null, [legRadius ,height/2 ,legRadius ]);
+         draw(cylinderYMesh, '40,16,8', [0,thickness       ,0], null, [baseRadius,thickness,baseRadius]);
+      }
+
       // SHOW CENTERING INDICATOR
 
       if (! isRubber && isCentering)
@@ -1559,7 +1562,7 @@ let S = [], vm, vmi, computeQuadric, activeSet, implicitSurface,
       // SET IMPLICIT SURFACE PROPERTIES
    
       implicitSurface.setBlur(blur);
-      implicitSurface.setDivs(isFewerDivs ? 20 : window.vr || activeState() ? 40 : 60);
+      implicitSurface.setDivs(isFewerDivs ? 15 : activeState() ? 30 : 60);
       implicitSurface.setFaceted(isFaceted);
       implicitSurface.setNoise(textureState);
       implicitSurface.setIsTexture(isTexture);
@@ -1743,9 +1746,9 @@ let S = [], vm, vmi, computeQuadric, activeSet, implicitSurface,
                if (S[n].info) {
                   name += ',' + S[n].info;
                   if (! formMesh[name])
-                                 formMesh[name] = createMesh(64, 32, uvToForm, { form   : S[n].form,
-                                                                  rounded: S[n].rounded,
-                                                                  info   : S[n].info });
+                     formMesh[name] = createMesh(64, 32, uvToForm, { form   : S[n].form,
+                                                                     rounded: S[n].rounded,
+                                                                     info   : S[n].info });
                }
                draw(formMesh[name], materialId, null, null, null, S[n].texture);
                M.restore();
@@ -2445,14 +2448,14 @@ let S = [], vm, vmi, computeQuadric, activeSet, implicitSurface,
    
    // RESPOND TO THE KEYBOARD
 
-   canvas.onKeyPress = key => {
+   canvas.onKeyPress = (key, event) => {
       if (!justPressed && ! isShowingCode && window.interactMode == 1) {
          justPressed = true;
-         this.onKeyDown(key);
+         this.onKeyDown(key, event);
       }
    }
 
-   this.onKeyDown = key => {
+   this.onKeyDown = (key, event) => {
 
       if (key != keyPressed) {
          switch (key) {
@@ -2491,14 +2494,14 @@ let S = [], vm, vmi, computeQuadric, activeSet, implicitSurface,
 
    let ns = () => mn >= 0 ? mn : S.length - 1;
 
-   canvas.onKeyRelease = key => {
+   canvas.onKeyRelease = (key, event) => {
       if (justPressed && ! isShowingCode && window.interactMode == 1) {
-         this.onKeyUp(key);
+         this.onKeyUp(key, event);
          justPressed = false;
       }
    }
 
-   this.onKeyUp = key => {
+   this.onKeyUp = (key, event) => {
 
       flash = false;
       keyPressed = -1;
@@ -2507,25 +2510,25 @@ let S = [], vm, vmi, computeQuadric, activeSet, implicitSurface,
       let ch = String.fromCharCode(key);
       keyChar = ch;
 
-      if (isControl) {
-         model._doControlAction(ch);
+      if (event.ctrlKey) {
+         model._doControlAction(event.key);
       }
 
       isControl = false;
 
-      switch(key) {
-         case 37: // LEFT ARROW
-            rotateyState--;                  // ROTATE LEFT
-            return;
-         case 38: // UP ARROW
-            rotatexState++;                  // ROTATE UP
-            return;
-         case 39: // RIGHT ARROW
-            rotateyState++;                  // ROTATE RIGHT
-            return;
-         case 40: // DOWN ARROW
-            rotatexState--;                  // ROTATE DOWN
-            return;
+      switch (key) {
+      case 37: // LEFT ARROW
+         rotateyState--;                  // ROTATE LEFT
+         return;
+      case 38: // UP ARROW
+         rotatexState++;                     // ROTATE UP
+         return;
+      case 39: // RIGHT ARROW
+         rotateyState++;                  // ROTATE RIGHT
+         return;
+      case 40: // DOWN ARROW
+         rotatexState--;                     // ROTATE DOWN
+         return;
       }
 
       if(enableModeling) {
@@ -2851,6 +2854,9 @@ for (let s = 3 ; s < 100 ; s *= 2)
 ////////////// GIVE PROGRAMMERS THE OPTION TO BUILD AND ANIMATE THEIR OWN MODEL. /////////////
 //////////////////////////////////////////////////////////////////////////////////////////////
 
+const _animateNoop = () => {};
+
+let wasInteractMode = true;
 
 function Node(_form) {
    let id = uniqueID(),
@@ -2859,10 +2865,35 @@ function Node(_form) {
        previousTime,
        rm;
 
+   
+   this.setControls = () => {
+      if (interactMode != wasInteractMode) {
+         messages.innerHTML = '<button onclick="interactMode=!interactMode">mode</button>';
+         if (interactMode) {
+            let message = ' control keys: ';
+            for (let ch in this._controlActions)
+               message += '<button onclick=controlAction("' + ch + '")>' + ch + '</button>';
+            messages.innerHTML += message;
+         }
+         wasInteractMode = interactMode;
+      }
+   }
+
+   this.resetControls = () => {
+      messages.innerHTML = '<button onclick="interactMode=!interactMode">mode</button>';
+      if (interactMode) {
+         let message = ' control keys: ';
+         for (let ch in this._controlActions)
+            message += '<button onclick=controlAction("' + ch + '")>' + ch + '</button>';
+         messages.innerHTML += message;
+      }
+      wasInteractMode = false;
+   }
+
    this.clear = () => {
       previousTime = 0;
       rm = matrix_identity;
-      this._animate  = null;
+      this._animate  = _animateNoop;
       this._bevel    = false;
       this._blend    = false;
       this._blur     = .5;
@@ -2875,6 +2906,7 @@ function Node(_form) {
       this._precision = 1;
       m.identity();
       this._controlActions = {};
+      this.resetControls();
       implicitSurface.remesh();
       rotatex = rotatey = rotatexState = rotateyState = 0;
       modelMatrix = matrix_identity();
@@ -2920,27 +2952,31 @@ function Node(_form) {
     this._children.splice(i, 1);
       return this;
    }
-   this.animate  = func    => { this._animate = func; return this; }
-   this.identity = ()      => { m.identity();         return this; }
-   this.aimX     = vec     => { m.aimX(vec);          return this; }
-   this.aimY     = vec     => { m.aimY(vec);          return this; }
-   this.aimZ     = vec     => { m.aimZ(vec);          return this; }
-   this.move     = (x,y,z) => { m.translate(x,y,z);   return this; }
-   this.setMatrix = value  => { m.setValue(value);    return this; }
-   this.turnX    = theta   => { m.rotateX(theta);     return this; }
-   this.turnY    = theta   => { m.rotateY(theta);     return this; }
-   this.turnZ    = theta   => { m.rotateZ(theta);     return this; }
-   this.scale    = (x,y,z) => { m.scale(x,y,z);       return this; }
-   this.color    = (r,g,b) => { this._color = typeof r === 'string' ||
+   this.animate   = func    => { this._animate = func; return this; }
+   this.identity  = ()      => { m.identity();         return this; }
+   this.aimX      = vec     => { m.aimX(vec);          return this; }
+   this.aimY      = vec     => { m.aimY(vec);          return this; }
+   this.aimZ      = vec     => { m.aimZ(vec);          return this; }
+   this.move      = (x,y,z) => { m.translate(x,y,z);   return this; }
+   this.getMatrix = ()      => { return m.getValue();               }
+   this.setMatrix = value   => { m.setValue(value);    return this; }
+   this.getMeshInfo = ()    => { return implicitSurface.meshInfo(); }
+   this.setTable  = tf      => { isTable = tf;         return this; }
+   this.getDivs   = ()      => { return implicitSurface.divs();     }
+   this.turnX     = theta   => { m.rotateX(theta);     return this; }
+   this.turnY     = theta   => { m.rotateY(theta);     return this; }
+   this.turnZ     = theta   => { m.rotateZ(theta);     return this; }
+   this.scale     = (x,y,z) => { m.scale(x,y,z);       return this; }
+   this.color     = (r,g,b) => { this._color = typeof r === 'string' ||
                                               Array.isArray(r) ? r : [r,g,b]; return this; }
-   this.blur     = value   => { this._blur = value;   return this; }
-   this.info     = value   => { if (this.prop('_blend') && this._info != value) activeSet(true);
+   this.blur      = value   => { this._blur = value;   return this; }
+   this.info      = value   => { if (this.prop('_blend') && this._info != value) activeSet(true);
                                 this._info = value;   return this; }
-   this.texture  = src     => { this._texture = src;  return this; }
-   this.bevel    = tf      => { this._bevel = tf === undefined ? true : tf; return this; }
-   this.blend    = tf      => { if (this._blend != tf) activeSet(true);
+   this.texture   = src     => { this._texture = src;  return this; }
+   this.bevel     = tf      => { this._bevel = tf === undefined ? true : tf; return this; }
+   this.blend     = tf      => { if (this._blend != tf) activeSet(true);
                                 this._blend = tf === undefined ? false : tf; return this; }
-   this.melt     = tf      => { this._melt  = tf === undefined ? true : tf; return this; }
+   this.melt      = tf      => { this._melt  = tf === undefined ? true : tf; return this; }
    this.precision = value   => { this._precision = value; return this; }
 
    window.controlAction = ch => {
@@ -2950,14 +2986,6 @@ function Node(_form) {
 
    this.render = pm => {
 
-      // if (this == model) {
-      //    let s = '<font color=white face=helvetica><small><small><small><p>';
-      //    s += '<b><big>' + modelData[modelId].name + '</big></b><p>';
-      //         for (let ch in this._controlActions)
-      //            s += '<font face=courier><b>CTRL-' + ch.toLowerCase() + '</b></font> ' +
-      //            this._controlActions[ch].label + '<br>';
-      //       //   html.inactiveCode.innerHTML = s;
-      // }
       implicitSurface.setPrecision(this.prop('_precision'));
       let color = this.prop('_color');
       if (Array.isArray(color)) {
@@ -2973,7 +3001,11 @@ function Node(_form) {
          this.deltaTime = previousTime ? this.time - previousTime : 1/30;
          if (this.prop('_melt'))
             activeSet(true);
-         this._animate(this);
+         try {
+            this._animate(this);
+         } catch (e) {
+            console.error("Error in animate()\n", e);
+         }
          previousTime = this.time;
       }
       rm = matrix_multiply(pm, m.getValue());
@@ -3000,21 +3032,6 @@ function Node(_form) {
       for (let i = 0 ; i < this._children.length ; i++)
          this._children[i].render(rm);
    }
-
-   let wasInteractMode = true;
-
-   this.setControls = () => {
-      if (interactMode != wasInteractMode) {
-         messages.innerHTML = '<button onclick="interactMode=!interactMode">mode</button>';
-         if (interactMode) {
-            let message = ' control keys: ';
-            for (let ch in this._controlActions)
-               message += '<button onclick=controlAction("' + ch + '")>' + ch.toLowerCase() + '</button>';
-            messages.innerHTML += message;
-         }
-         wasInteractMode = interactMode;
-      }
-   }
 }
 
 // EXPOSE A ROOT NODE FOR EXTERNAL MODELING.
@@ -3022,16 +3039,5 @@ function Node(_form) {
    let model = new Node('root');
    this.model = model;
    let startTime = Date.now() / 1000;
-
-   // let modelData = [], modelId = 0;
-   // this.defineModel = (name, func) => modelData.push({name:name, func:func});
-   // this.selectModel = () => {
-   //    modelData[modelId].func(model);
-   //    model.control('X', 'next model', () => {
-   //       model.clear();
-   //       modelId = (modelId + 1) % modelData.length;
-   //       this.selectModel();
-   //    });
-   // }
 }
 
