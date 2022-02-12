@@ -14,6 +14,8 @@ export function setScene(s)
 
 let sceneNames_ = "";
 
+
+
 export function demoNames()
 {
 	return sceneNames_;
@@ -32,4 +34,16 @@ export function setXREntry(UIType)
 export function xrEntryUI()
 {
 	return xrEntryUI_;
+}
+
+let isImmersive_ = false;
+
+export function setIsImmersive(flag)
+{
+	return isImmersive_ = flag;
+}
+
+export function isImmersive()
+{
+	return isImmersive_;
 }

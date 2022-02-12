@@ -118,27 +118,30 @@ const addDemoButtons = demoNames => {
          + ';window.muteSelf()\">' + names[n] + '</button>';
       }
    }
+
    
-
-   const xrEntryUI = global.xrEntryUI();
    header.innerHTML += "<br>";
-   header.appendChild(xrEntryUI.domElement);
-
 
    // NOTE(KTR): for code-reloading during development / for permanent changes
    // for performing some code changes that should not edit the code permanently,
    // this is where we can use new Function(...) in some way
    if (enableSceneReloading) {
       // use a button
-      header.innerHTML += '<br><button onclick=reloadCurrentScene();>Reload</button>';
+      header.innerHTML += '<button onclick=reloadCurrentScene();>Reload</button><BR>';
       // or automatically reload if you exit and re-enter the window
-      window.addEventListener("focus", (event) => { 
-         window.reloadCurrentScene();
-      }, false);
+
+      if (!global.isImmersive()) {
+         window.addEventListener("focus", (event) => { 
+            window.reloadCurrentScene();
+         }, false);
+      }
       // or eventually the server should just tell the application when a file has changed
       // TODO: 
       // ...
    }
+
+   const xrEntryUI = global.xrEntryUI();
+   header.appendChild(xrEntryUI.domElement);
 }
 
 // registers a scene to the list

@@ -72,15 +72,21 @@ export function initXR() {
 
     if (navigator.xr) {
         navigator.xr.isSessionSupported("immersive-vr").then((supported) => {
+            console.log("immersive-vr supported:[" + supported + "]");
             xrButton.enabled = supported;
             window.vr = supported;
             window.avatars[window.playerid].vr = window.vr;
+            global.setIsImmersive(supported);
+        }).catch((err) => {
+            console.warn("immersive-vr not supported on this platform!");
         });
 
         // Load multiple audio sources.
         // loadAudioSources(global.scene());
 
         navigator.xr.requestSession("inline").then(onSessionStarted);
+    } else {
+        console.warn("navigator.xr unavailable");
     }
 
     // custom init
