@@ -15,6 +15,7 @@ export default () => {
          { name: "DemoHitRect", path: "./demoHitRect.js" },
          { name: "DemoDots"   , path: "./demoDots.js"    },
          { name: "DemoBlobs"  , path: "./demoBlobs.js"   },
+         { name: "LightSaber"  , path: "./lightsaber.js"   },
       ]
    };
 }
