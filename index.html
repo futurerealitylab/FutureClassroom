@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <!--
-Copyright 2018 The Immersive Web Community Group
+Copyright 2018 The Immersive Web CommuniFty Group
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of
 this software and associated documentation files (the "Software"), to deal in
@@ -46,9 +46,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
   <header id=header>
     <details open>
       <summary>Welcome to the FutureClassroom!!</summary>
-      <p>
+      <dev id=messages>&nbsp;</dev>
         <!-- <a class="back" href="./">Back</a> -->
-      </p>
     </details>
   </header>
   <!-- <script type="module" src="js/primitive/avatar.js"></script> -->
@@ -63,27 +62,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
     <!-- local audio -->
     <audio id="local_webrtc" autoplay></audio>
   </div>
-  <script>
-    window.addDemoButtons = demoNames => {
-      let names = demoNames.split(',').map(item => item.trim());
-      let header = document.getElementById("header");
-      for (let n = 0; n < names.length; n++) {
-        let flag = 'demo' + names[n] + 'State';
-        window[flag] = 0;
-        if (names[n] != "Speak") {
-          header.innerHTML += '<button onclick=window.' + flag + '++;window.syncDemos();>' + names[n] + '</button>';
-        }
-        else {
-          header.innerHTML += '<button id=\"Speak\" onclick=\"window.' + flag + '=!window.' + flag
-            + ';window.muteSelf()\">' + names[n] + '</button>';
-        }
-      }
-    }
-    window.addNameField = () => {
-      // header.innerHTML += '<input type="text" id="name" >';
-      // header.innerHTML += '<button onclick="window.updateName()">user name</button>';
-    }
-  </script>
 </body>
 
 </html>

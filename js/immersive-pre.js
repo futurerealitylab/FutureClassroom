@@ -1,5 +1,5 @@
 import { WebXRButton } from "./util/webxr-button.js";
-import { Scene } from "./render/core/scene.js";
+import * as global from "./global.js";
 import { Renderer, createWebGLContext } from "./render/core/renderer.js";
 import { Gltf2Node } from "./render/nodes/gltf2.js";
 import { mat4, vec3 } from "./render/math/gl-matrix.js";
@@ -8,15 +8,15 @@ import { InlineViewerHelper } from "./util/inline-viewer-helper.js";
 import { QueryArgs } from "./util/query-args.js";
 import { EventBus } from "./primitive/eventbus.js";
 import * as DefaultSystemEvents from "./primitive/event.js";
-import {
-    loadAudioSources,
-    updateAudioSources,
-    updateAudioNodes,
-    stereo,
-    resonance,
-    audioSources,
-    pauseAudio,
-} from "./util/positional-audio.js";
+// import {
+//     loadAudioSources,
+//     updateAudioSources,
+//     updateAudioNodes,
+//     stereo,
+//     resonance,
+//     audioSources,
+//     pauseAudio,
+// } from "./util/positional-audio.js";
 import { Client as WSClient } from "./util/websocket-client.js";
 import { updateController } from "./render/core/controllerInput.js";
 import * as keyboardInput from "./util/input_keyboard.js";
@@ -48,7 +48,6 @@ let time = 0;
 // WebGL scene globals.
 let gl = null;
 let renderer = null;
-window.scene = new Scene();
 
 function initModels() {
     window.models = {};
@@ -58,30 +57,36 @@ function initModels() {
     });
     window.models["stereo"].visible = true;
     */
-    // window.scene.addNode(window.models['stereo']);
+    // global.scene().addNode(window.models['stereo']);
 }
 
-window.scene.standingStats(true);
-// window.scene.addNode(window.models['stereo']);
+global.scene().standingStats(true);
+// global.scene().addNode(window.models['stereo']);
 
 export function initXR() {
     xrButton = new WebXRButton({
         onRequestSession: onRequestSession,
         onEndSession: onEndSession,
     });
-    document.querySelector("header").appendChild(xrButton.domElement);
+    global.setXREntry(xrButton);
 
     if (navigator.xr) {
         navigator.xr.isSessionSupported("immersive-vr").then((supported) => {
+            console.log("immersive-vr supported:[" + supported + "]");
             xrButton.enabled = supported;
             window.vr = supported;
             window.avatars[window.playerid].vr = window.vr;
+            global.setIsImmersive(supported);
+        }).catch((err) => {
+            console.warn("immersive-vr not supported on this platform!");
         });
 
         // Load multiple audio sources.
-        loadAudioSources(window.scene);
+        // loadAudioSources(global.scene());
 
         navigator.xr.requestSession("inline").then(onSessionStarted);
+    } else {
+        console.warn("navigator.xr unavailable");
     }
 
     // custom init
@@ -132,14 +137,14 @@ function initGL() {
     onResize();
 
     renderer = new Renderer(gl);
-    window.scene.setRenderer(renderer);
+    global.scene().setRenderer(renderer);
 
     // Loads a generic controller meshes.
-    window.scene.inputRenderer.setControllerMesh(
+    global.scene().inputRenderer.setControllerMesh(
         new Gltf2Node({ url: "./media/gltf/controller/controller.gltf" }),
         "right"
     );
-    window.scene.inputRenderer.setControllerMesh(
+    global.scene().inputRenderer.setControllerMesh(
         new Gltf2Node({ url: "./media/gltf/controller/controller-left.gltf" }),
         "left"
     );
@@ -171,7 +176,7 @@ async function onSessionStarted(session) {
         let refSpace = ev.frame.session.isImmersive
             ? inputController.referenceSpace
             : inlineViewerHelper.referenceSpace;
-        window.scene.handleSelect(ev.inputSource, ev.frame, refSpace);
+        global.scene().handleSelect(ev.inputSource, ev.frame, refSpace);
     });
 
     initGL();
@@ -204,7 +209,7 @@ function onSessionEnded(event) {
         xrButton.setSession(null);
 
         // Stop the audio playback when we exit XR.
-        pauseAudio();
+        // pauseAudio();
     }
 }
 
@@ -238,14 +243,14 @@ function updateInputSources(session, frame, refSpace) {
         ]);
         // vec3.transformMat4(cursorPos, cursorPos, inputPose.targetRay.transformMatrix);
 
-        window.scene.inputRenderer.addCursor(cursorPos);
+        global.scene().inputRenderer.addCursor(cursorPos);
 
         if (inputSource.gripSpace) {
             let gripPose = frame.getPose(inputSource.gripSpace, refSpace);
             if (gripPose) {
                 // If we have a grip pose use it to render a mesh showing the
                 // position of the controller.
-                window.scene.inputRenderer.addController(
+                global.scene().inputRenderer.addController(
                     gripPose.transform.matrix,
                     inputSource.handedness
                 ); // let controller = this._controllers[handedness]; // so it is updating actually
@@ -272,7 +277,7 @@ function updateInputSources(session, frame, refSpace) {
             }
         }
         let headPose = frame.getViewerPose(refSpace);
-        if (window.playerid) {
+        // if (window.playerid) {
             window.avatars[window.playerid].headset.position =
                 headPose.transform.position;
             window.avatars[window.playerid].headset.orientation =
@@ -282,9 +287,9 @@ function updateInputSources(session, frame, refSpace) {
 
             for (let source of session.inputSources) {
                 if (source.handedness && source.gamepad) {
-                    if (source.gamepad.buttons[3].pressed) {
-                        console.log("source.gamepad.buttons[3].pressed", source.gamepad.buttons[3].pressed);
-                    }
+                    // if (source.gamepad.buttons[3].pressed) {
+                    //     console.log("source.gamepad.buttons[3].pressed", source.gamepad.buttons[3].pressed);
+                    // }
                     if (source.handedness == "left")
                         window.avatars[window.playerid].leftController.updateButtons(source.gamepad.buttons);
                     if (source.handedness == "right")
@@ -293,7 +298,7 @@ function updateInputSources(session, frame, refSpace) {
                     // console.log("rightController", window.avatars[window.playerid].rightController)
                 }
             }
-        }
+        // }
     }
 }
 
@@ -303,7 +308,7 @@ function hitTest(inputSource, frame, refSpace) {
         return;
     }
 
-    let hitResult = window.scene.hitTest(targetRayPose.transform);
+    let hitResult = global.scene().hitTest(targetRayPose.transform);
     if (hitResult) {
         // for (let source of audioSources) {
         //     if (hitResult.node === source.node) {
@@ -383,9 +388,14 @@ function onXRFrame(t, frame) {
         ? inputController.referenceSpace
         : inlineViewerHelper.referenceSpace;
     let pose = frame.getViewerPose(refSpace);
-    window.scene.startFrame();
+
 
     session.requestAnimationFrame(onXRFrame);
+
+    keyboardInput.updateKeyState();
+
+    global.scene().startFrame();
+
 
     updateInputSources(session, frame, refSpace);
     // ZH: send to websocket server for self avatar sync
@@ -397,13 +407,12 @@ function onXRFrame(t, frame) {
     //     // console.log("corelink.send", msg);
     //     // window.wsclient.send("avatar", window.playerid);
     // }
-
     // Update the position of all currently selected audio sources. It's
     // possible to select multiple audio sources and drag them at the same
     // time (one per controller that has the trigger held down).
-    updateAudioSources(frame, refSpace);
+    // updateAudioSources(frame, refSpace);
 
-    updateAudioNodes(window.scene);
+    // updateAudioNodes(global.scene());
 
     updateAvatars();
 
@@ -419,6 +428,7 @@ function onXRFrame(t, frame) {
                 updateController(thisAvatar, {
                     handedness: source.handedness,
                     buttons: source.gamepad.buttons,
+                    axes: source.gamepad.axes
                 });
             }
         }
@@ -428,20 +438,20 @@ function onXRFrame(t, frame) {
         inlineViewerHelper.update();
     }
 
-    window.scene.drawXRFrame(frame, pose, time);
+    global.scene().drawXRFrame(frame, pose, time);
 
-    if (pose) {
-        resonance.setListenerFromMatrix({ elements: pose.transform.matrix });
-    }
+    // if (pose) {
+    //     resonance.setListenerFromMatrix({ elements: pose.transform.matrix });
+    // }
 
-    window.scene.endFrame();
+    global.scene().endFrame();
 }
 
 function updateAvatars() {
     // update transformation of each avatar audio source
-    for (let peerUuid in window.peerConnections) {
-        window.updateAvatarAudio(peerUuid);
-    }
+    // for (let peerUuid in window.peerConnections) {
+    //     window.updateAvatarAudio(peerUuid);
+    // }
 
     // update avatar's model's matrix
     for (let id in window.avatars) {
@@ -474,7 +484,7 @@ function updateObjects() {
             });
             window.objects[id].node.visible = true;
             window.objects[id].node.selectable = true;
-            window.scene.addNode(window.objects[id].node);
+            global.scene().addNode(window.objects[id].node);
         }
         window.objects[id].node.matrix = matrix;
     }

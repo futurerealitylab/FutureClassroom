@@ -246,14 +246,14 @@ export function loadAudioSources(scene) {
 
         // Once the audio is loaded, create a button that toggles the
         // audio state when clicked.
-        playButton = new ButtonNode(playTexture, () => {
-            if (audioContext.state == 'running') {
-                pauseAudio();
-            } else {
-                playAudio();
-            }
-        });
-        playButton.translation = [0, 1., 0.25];
-        scene.addNode(playButton);
+        // playButton = new ButtonNode(playTexture, () => {
+        //     if (audioContext.state == 'running') {
+        //         pauseAudio();
+        //     } else {
+        //         playAudio();
+        //     }
+        // });
+        // playButton.translation = [0, 1., 0.25];
+        // scene.addNode(playButton);
     });
 }

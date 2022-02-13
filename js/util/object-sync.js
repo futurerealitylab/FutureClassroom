@@ -6,6 +6,7 @@ import { Gltf2Node } from '../render/nodes/gltf2.js';
 import { mat4, vec3 } from '../render/math/gl-matrix.js';
 import { corelink_message } from './corelink_sender.js';
 import { metaroomReceiver, metaroomSyncSender } from '../corelink_handler.js'
+import * as global from '../global.js';
 
 window.envObjID = 10000;
 export function initObject(objectType, objectMatrix, objid = 0) {
@@ -61,7 +62,7 @@ window.syncDemos = function () {
     // window[flag]
     // window.demoNames
     var flags = {};
-    window.demoNames.split(",").forEach(element => {
+    global.demoNames().split(",").forEach(element => {
         if (element != "Speak") {
             var temp = 'demo' + element + 'State';
             flags[temp] = window[temp];
