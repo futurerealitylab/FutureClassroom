@@ -18,6 +18,7 @@ const validHandedness = ["left", "right"];
 window.initxr = false;
 
 export let updateController = (avatar, buttonInfo) => {
+  
   controllerMatrix.left = avatar.leftController.matrix;
   controllerMatrix.right = avatar.rightController.matrix;
 

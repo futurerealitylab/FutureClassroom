@@ -27,7 +27,7 @@ import { Clay } from "./render/core/clay.js";
 
 window.wsport = 8447;
 window.vr = false;
-window.interactMode = 0;
+window.interactMode = 1;
 window.model = 0;
 
 // If requested, use the polyfill to provide support for mobile devices
@@ -259,10 +259,12 @@ function updateInputSources(session, frame, refSpace) {
                     if (inputSource.handedness == "left") {
                         window.avatars[window.playerid].leftController.position =
                             gripPose.transform.position;
+                            console.log(gripPose.transform.position)
                         window.avatars[window.playerid].leftController.orientation =
                             gripPose.transform.orientation;
                         window.avatars[window.playerid].leftController.matrix =
                             gripPose.transform.matrix;
+                            console.log(gripPose.transform.matrix)
                     } else if (inputSource.handedness == "right") {
                         window.avatars[window.playerid].rightController.position =
                             gripPose.transform.position;
