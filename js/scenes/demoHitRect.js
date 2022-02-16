@@ -51,7 +51,7 @@ import { controllerMatrix, buttonState } from "../render/core/controllerInput.js
          let target = model.child(0);
          target.identity()
                .move(tx, 1.5 + ty, 0)
-               .turnY(theta + Math.sin(model.time))
+               .turnY(theta)// + Math.sin(model.time))
                .scale(.3,.2,1);
 
          // PLACE THE LASER BEAMS TO EMANATE FROM THE CONTROLLERS
