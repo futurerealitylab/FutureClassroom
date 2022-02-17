@@ -1,6 +1,7 @@
 "use strict";
 const buttonNum = 7;
 import { corelink_event } from "../../util/corelink_sender.js";
+import * as cg from "./cg.js";
 
 export let viewMatrix = [], time = 0;
 window.isPressed = false;
@@ -18,7 +19,6 @@ const validHandedness = ["left", "right"];
 window.initxr = false;
 
 export let updateController = (avatar, buttonInfo) => {
-  
   controllerMatrix.left = avatar.leftController.matrix;
   controllerMatrix.right = avatar.rightController.matrix;
 
@@ -67,3 +67,21 @@ export let getViews = (views) => {
   viewMatrix = [];
   for (let view of views) viewMatrix.push(view.viewMatrix);
 };
+
+export function ControllerBeam(model, hand) {
+   this.beam = model.add();
+   this.beam.add('tubeZ').color(10,0,0).turnX(-.8)
+                                       .move(0,0,-10.01)
+                                       .scale(.001,.001,10);
+   this.update = () => {
+      let m = controllerMatrix[hand],
+          update = (offset, fallback) =>
+             this.beam.setMatrix(
+                this.m = m.length ? cg.mMultiply(m, cg.mTranslate(offset))
+                                  : cg.mTranslate(fallback));
+      if (hand == 'left' ) update([ .0060,.014,0], [-.2,0,0]);
+      if (hand == 'right') update([-.0015,.014,0], [ .2,0,0]);
+   }
+   this.hitRect = m => cg.mHitRect(cg.mMultiply(this.m, cg.mRotateX(-.8)), m);
+}
+

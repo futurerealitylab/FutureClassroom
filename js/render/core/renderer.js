@@ -215,9 +215,8 @@ const int nl = 2;                   // NUMBER OF LIGHTS
        vec3 R = 2. * dot(uLDir[n], N) * N - uLDir[n];
        color += uLCol[n] * (
                  diffuse * max(0., dot(uLDir[n], N))
-              //  + specular.rgb * pow(max(0., R.z), specular.w)
+               + specular.rgb * pow(max(0., R.z), specular.w)
        );
-       if(pow(max(0., R.z), specular.w) > .8) color += .3 * specular.rgb;
     }
     vec4 texture = texture(uSampler, vUV);
     color *= mix(vec3(1.), texture.rgb, texture.a * uTexture);

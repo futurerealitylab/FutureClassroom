@@ -4,7 +4,8 @@ const WALK_SPEED = 0.05;
 
 export class InputController {
     constructor(referenceSpace) {
-      this.theta = 2 * Math.PI * ((7 * window.playerid) % 12) / 12
+      //this.theta = 2 * Math.PI * ((7 * window.playerid) % 12) / 12;
+      this.theta = Math.PI;
       this.lookYaw = this.theta;
       this.lookPitch = 0;
       this.viewerHeight = 0;

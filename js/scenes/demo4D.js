@@ -1,65 +1,41 @@
 import * as cg from "../render/core/cg.js";
 import { controllerMatrix, buttonState, joyStickState } from "../render/core/controllerInput.js";
 
-let isAnimating, isBold, isColors, M, C = [],
-    E = [ 0,2,4,6,8,10,12,14, 0,1,4,5,8,9,12,13,
-          0,1,2,3,8, 9,10,11, 0,1,2,3,4,5, 6, 7 ];
-
-for (let n = 0 ; n < 16 ; n++)
-   C.push([ (n&1)*2-1, (n/2&1)*2-1, (n/4&1)*2-1, (n/8&1)*2-1 ]);
-
-let rotate4D = (i,j,theta) => {
-   let R = [1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1];
-   R[i | i<<2] =  Math.cos(theta);
-   R[i | j<<2] =  Math.sin(theta);
-   R[j | i<<2] = -Math.sin(theta);
-   R[j | j<<2] =  Math.cos(theta);
-   M = cg.mMultiply(M, R);
-}
-
 export const init = async model => {
-   model.control('a', 'animate', () => isAnimating = ! isAnimating);
-   model.control('b', 'bold'   , () => isBold      = ! isBold     );
-   model.control('c', 'colors' , () => isColors    = ! isColors   );
+   let isAnimate, isBold, isColors, M, C = [],
+       E = [ 0,2,4,6,8,10,12,14, 0,1,4,5,8,9,12,13,
+             0,1,2,3,8, 9,10,11, 0,1,2,3,4,5, 6, 7 ];
+
+   for (let n = 0 ; n < 16 ; n++)
+      C.push([ (n&1)*2-1, (n/2&1)*2-1, (n/4&1)*2-1, (n/8&1)*2-1 ]);
+
+   let rotate4D = (i,j,theta) => {
+      let R = [1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1];
+      R[i | i<<2] =  Math.cos(theta);
+      R[i | j<<2] =  Math.sin(theta);
+      R[j | i<<2] = -Math.sin(theta);
+      R[j | j<<2] =  Math.cos(theta);
+      M = cg.mMultiply(M, R);
+   }
+
+   model.control('a', 'animate', () => isAnimate = ! isAnimate );
+   model.control('b', 'bold'   , () => isBold      = ! isBold  );
+   model.control('c', 'colors' , () => isColors    = ! isColors);
 
    for (let n = 0 ; n < E.length ; n++) model.add().add('tubeZ');
    for (let n = 0 ; n < C.length ; n++) model.add().add('sphere');
 
    M = [1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1];
-   isAnimating = isBold = isColors = false;
-}
+   isAnimate = isBold = isColors = false;
 
-export const display = model => {
    model.animate(() => {
-
-      // GET DATA FROM MY LEFT CONTROLLER
-
-      let leftMatrix   = controllerMatrix.left;
       let leftTrigger  = buttonState.left[0].pressed;
-      let leftSqueeze  = buttonState.left[1].pressed;
-      let leftJoyTouch = buttonState.left[3].touched;
-      let leftJoyPress = buttonState.left[3].pressed;
-      let X            = buttonState.left[4].pressed;
-      let Y            = buttonState.left[5].pressed;
-      let leftJoyX     = joyStickState.left.x;
-      let leftJoyY     = joyStickState.left.y;
-
-      // GET DATA FROM MY RIGHT CONTROLLER
-
-      let rightMatrix   = controllerMatrix.right;
-      let rightTrigger  = buttonState.right[0].pressed;
-      let rightSqueeze  = buttonState.right[1].pressed;
-      let rightJoyTouch = buttonState.right[3].touched;
-      let rightJoyPress = buttonState.right[3].pressed;
-      let A             = buttonState.right[4].pressed;
-      let B             = buttonState.right[5].pressed;
-      let rightJoyX     = joyStickState.right.x;
-      let rightJoyY     = joyStickState.right.y;
+      let rightTrigger = buttonState.right[0].pressed;
 
       let color = leftTrigger  ? [1,0,0] :
-             rightTrigger ? [0,1,0] : [0,0,0];
+                  rightTrigger ? [0,1,0] : [0,0,0];
 
-      if (isAnimating) {
+      if (isAnimate) {
          rotate4D(0, 3, .43 * model.deltaTime);
          rotate4D(0, 2, .46 * model.deltaTime);
          rotate4D(1, 2, .49 * model.deltaTime);
