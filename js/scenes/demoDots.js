@@ -1,43 +1,40 @@
 import * as cg from "../render/core/cg.js";
-import { controllerMatrix, buttonState } from "../render/core/controllerInput.js";
-
-// SPECIFY THE NUMBER OF DOTS
-
-let N = 100;
-
-// USE A MONTE CARLO METHOD TO GENERATE UNIFORMLY RANDOM DOTS ON A SPHERE
-
-let generatePoint = () => {
-   let x = 1, y = 1, z = 1;
-   while (x*x + y*y + z*z > 1) {
-      x = 2 * Math.random() - 1;
-      y = 2 * Math.random() - 1;
-      z = 2 * Math.random() - 1;
-   }
-   return cg.normalize([x,y,z]);
-}
-
-// GENERATE ALL THE DOTS AND THEIR COLORS
-
-let P = [], C = [];
-for (let n = 0 ; n < N ; n++) {
-   P.push(generatePoint());
-   C.push([Math.random() > .5, Math.random() > .5, Math.random() > .5]);
-}
-
-// COMPUTE THE OPTIMAL DISTANCE BETWEEN NEIGHBORING DOTS
-
-let r = Math.sqrt(4 * Math.PI / N);
-
-// CREATE THE DOTS GEOMETRY
 
 export const init = async model => {
+
+   // SPECIFY THE NUMBER OF DOTS
+
+   let N = 100;
+
+   // USE A MONTE CARLO METHOD TO GENERATE UNIFORMLY RANDOM DOTS ON A SPHERE
+
+   let generatePoint = () => {
+      let x = 1, y = 1, z = 1;
+      while (x*x + y*y + z*z > 1) {
+         x = 2 * Math.random() - 1;
+         y = 2 * Math.random() - 1;
+         z = 2 * Math.random() - 1;
+      }
+      return cg.normalize([x,y,z]);
+   }
+
+   // GENERATE ALL THE DOTS AND THEIR COLORS
+
+   let P = [], C = [];
+   for (let n = 0 ; n < N ; n++) {
+      P.push(generatePoint());
+      C.push([Math.random() > .5, Math.random() > .5, Math.random() > .5]);
+   }
+
+   // COMPUTE THE OPTIMAL DISTANCE BETWEEN NEIGHBORING DOTS
+
+   let r = Math.sqrt(4 * Math.PI / N);
+
+   // CREATE THE DOTS GEOMETRY
+
    model.move(0,1.5,0).scale(.5);
    for (let n = 0 ; n < N ; n++)
       model.add('tubeZ').color(C[n]);
-}
-
-export const display = model => {
 
    // AT EACH ANIMATION FRAME
 

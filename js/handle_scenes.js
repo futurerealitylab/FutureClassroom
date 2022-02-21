@@ -130,11 +130,9 @@ const addDemoButtons = demoNames => {
       header.innerHTML += '<button onclick=reloadCurrentScene();>Reload</button><BR>';
       // or automatically reload if you exit and re-enter the window
 
-      if (!global.isImmersive()) {
-         window.addEventListener("focus", (event) => { 
-            window.reloadCurrentScene();
-         }, false);
-      }
+      window.addEventListener("focus", (event) => { 
+         window.reloadCurrentScene();
+      }, false);
       // or eventually the server should just tell the application when a file has changed
       // TODO: 
       // ...
