@@ -103,7 +103,7 @@ export function corelink_message(type, data) {
                 uid: window.playerid,
                 state: data,
             };
-            console.log("demo", message);
+            //console.log("demo", message);
             break;
         case "event":
             // console.log(data);

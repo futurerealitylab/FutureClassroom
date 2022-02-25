@@ -13,6 +13,7 @@ export const init = async model => {
 
    model.animate(() => {
       label.identity().turnY(isAnimate ? Math.sin(model.time) : 0);
+      label.color([1,1,.5 + .5 * Math.sin(10 * model.time)]);
       for (let line = 0 ; line < text.length ; line++)
          label.child(line).info((isItalic ? '<i>' : '') + text[line]);
    });

@@ -23,6 +23,9 @@ import { Node } from "./node.js";
 import { Program } from "./program.js";
 import { DataTexture, VideoTexture } from "./texture.js";
 import { mat4, vec3 } from "../math/gl-matrix.js";
+import { lcb, rcb } from "../../handle_scenes.js";
+import { buttonState } from "./controllerInput.js";
+import * as cg from "./cg.js";
 
 export const ATTRIB = {
   POSITION: 1,
@@ -87,7 +90,7 @@ in vec2  aUV;
 in float aRGB;
 
 out   vec4  vDiffuse, vSpecular;
-out   vec3  vPos, vNor, vRGB;
+out   vec3  vAPos, vPos, vNor, vRGB;
 out   vec2  vUV;
 out   float vWeights[6];
 
@@ -156,6 +159,7 @@ float noise(vec3 point) {
 
       nor = vec4(N, 0.) * uInvModel;
 
+      vAPos = aPos;
       vPos = pos.xyz;
       vNor = nor.xyz;
       vRGB = unpackRGB(aRGB);
@@ -175,7 +179,7 @@ float noise(vec3 point) {
 const Clay_FRAG_SOURCE = `#version 300 es // NEWER VERSION OF GLSL
 precision highp float; // HIGH PRECISION FLOATS
 
-const int nl = 2;                   // NUMBER OF LIGHTS
+const int nl = 2;                    // NUMBER OF LIGHTS
 
  uniform float uTime;                // TIME, IN SECONDS
  uniform float uBlobby;              // BLOBBY FLAG
@@ -184,13 +188,26 @@ const int nl = 2;                   // NUMBER OF LIGHTS
  uniform mat4  uPhong;               // MATERIAL
  uniform sampler2D uSampler;
  uniform float uTexture;
+ uniform int uVideo;
+ uniform int uProcedure;
 
- in vec3  vPos, vNor, vRGB;     // POSITION, NORMAL, COLOR
- in float vWeights[6];          // BLOBBY WEIGHTS
+ in vec3  vAPos, vPos, vNor, vRGB;   // POSITION, NORMAL, COLOR
+ in float vWeights[6];               // BLOBBY WEIGHTS
  in vec4  vDiffuse, vSpecular;
  in vec2  vUV;
 
  out vec4 fragColor; // RESULT WILL GO HERE
+
+float noise(vec3 point) { 
+  float r = 0.; for (int i=0;i<16;i++) {
+  vec3 D, p = point + mod(vec3(i,i/4,i/8) , vec3(4.0,2.0,2.0)) +
+       1.7*sin(vec3(i,5*i,8*i)), C=floor(p), P=p-C-.5, A=abs(P);
+  C += mod(C.x+C.y+C.z,2.) * step(max(A.yzx,A.zxy),A) * sign(P);
+  D=34.*sin(987.*float(i)+876.*C+76.*C.yzx+765.*C.zxy);P=p-C-.5;
+  r+=sin(6.3*dot(P,fract(D)-.5))*pow(max(0.,1.-2.*dot(P,P)),4.);
+  } 
+  return .5 * sin(r); 
+}
 
  void main() {
     vec3 ambient, diffuse;
@@ -221,7 +238,15 @@ const int nl = 2;                   // NUMBER OF LIGHTS
     vec4 texture = texture(uSampler, vUV);
     color *= mix(vec3(1.), texture.rgb, texture.a * uTexture);
 
-    fragColor = vec4(sqrt(color * vRGB), 1.0) * uOpacity;
+    if (uVideo > 0)
+       color = texture.rgb * texture.rgb;
+
+    float opacity = uOpacity;
+    if (uProcedure > 0) {
+       opacity = sign(noise(2. * vAPos + vec3(uTime,uTime,uTime)));
+    }
+
+    fragColor = vec4(sqrt(color * vRGB), 1.0) * opacity;
  }
 `; 
 
@@ -1039,7 +1064,7 @@ export class Renderer {
     // gl.clearDepth(-1);
     gl.enable(gl.BLEND);
     gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
-    gl.enable(gl.CULL_FACE);
+    //gl.enable(gl.CULL_FACE);
     // gl.cullFace(gl.FRONT);
 
     let bpe = Float32Array.BYTES_PER_ELEMENT;
@@ -1096,6 +1121,30 @@ export class Renderer {
     gl.enableVertexAttribArray(aWts1);
     gl.vertexAttribPointer(aWts1, 3, gl.FLOAT, false, new_vertex_size * bpe, 12 * bpe);
     window.clay.animate(views); 
+
+    if (lcb) lcb.update();
+    if (rcb) rcb.update();
+
+    let lDown = buttonState.left[0].pressed;
+    let rDown = buttonState.right[0].pressed;
+
+    let lClick = clay.widgets._lDownPrev && ! lDown;
+    let rClick = clay.widgets._rDownPrev && ! rDown;
+
+    clay.widgets._lDownPrev = lDown;
+    clay.widgets._rDownPrev = rDown;
+
+    for (let i = 0 ; i < clay.widgets.nChildren() ; i++) {
+       let obj = clay.widgets.child(i);
+       if (obj.getInfo()) {
+          let lHit = lcb.hitLabel(obj);
+          let rHit = rcb.hitLabel(obj);
+	  obj.color(lHit && lDown || rHit && rDown ? [1,0,0] :
+	            lHit || rHit ? [1,.5,.5] : [1,1,1]);
+          if (lHit && lClick || rHit && rClick)
+	     window.chooseFlag(obj.getInfo());
+       }
+    }
   }
 
   _getRenderTexture(texture) {

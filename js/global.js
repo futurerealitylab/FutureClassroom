@@ -1,6 +1,8 @@
 import { Scene } from "./render/core/scene.js";
+import { Node } from "./render/core/node.js"
 
 let scene_ = new Scene();
+export let gltfRoot = scene_.addNode(new Node());
 
 export function scene()
 {

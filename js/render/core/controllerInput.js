@@ -69,8 +69,9 @@ export let getViews = (views) => {
 };
 
 export function ControllerBeam(model, hand) {
+   let bend = Math.PI/4;
    this.beam = model.add();
-   this.beam.add('tubeZ').color(10,0,0).turnX(-.8)
+   this.beam.add('tubeZ').color(10,0,0).turnX(-bend)
                                        .move(0,0,-10.01)
                                        .scale(.001,.001,10);
    this.update = () => {
@@ -82,6 +83,9 @@ export function ControllerBeam(model, hand) {
       if (hand == 'left' ) update([ .0060,.014,0], [-.2,0,0]);
       if (hand == 'right') update([-.0015,.014,0], [ .2,0,0]);
    }
-   this.hitRect = m => cg.mHitRect(cg.mMultiply(this.m, cg.mRotateX(-.8)), m);
+   this.hitRect = m => cg.mHitRect(cg.mMultiply(this.m, cg.mRotateX(-bend)), m);
+   this.hitLabel = label =>
+      this.hitRect(cg.mMultiply(label.getGlobalMatrix(),
+                                cg.mScale(label.getInfo().length/2,1,1)));
 }
 

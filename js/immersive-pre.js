@@ -158,6 +158,7 @@ function onRequestSession() {
     return navigator.xr
         .requestSession("immersive-vr", {
             requiredFeatures: ["local-floor"],
+            optionalFeatures: ["hand-tracking"],
         })
         .then((session) => {
             xrButton.setSession(session);

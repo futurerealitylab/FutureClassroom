@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <!--
-Copyright 2018 The Immersive Web CommuniFty Group
+Copyright 2018 The Immersive Web Community Group
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of
 this software and associated documentation files (the "Software"), to deal in
@@ -43,6 +43,18 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 </head>
 
 <body>
+<video  id="video" autoplay="true"
+        style="position:absolute;left:-1000px;"
+        width=640 height=480></video>
+
+<script>
+window.video = document.getElementById('video');
+if (navigator.mediaDevices.getUserMedia)
+  navigator.mediaDevices.getUserMedia({ audio: false, video: true })
+           .then(function(stream) { video.srcObject = stream; },
+                 function(error ) { console.log(error); });
+</script>
+
   <header id=header>
     <details open>
       <summary>Welcome to the FutureClassroom!!</summary>

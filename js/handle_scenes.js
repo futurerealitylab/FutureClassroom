@@ -1,5 +1,6 @@
 // import globally-available sub-systems
 import * as global from "./global.js";
+import { ControllerBeam } from "./render/core/controllerInput.js";
 
 window.currentName = '';
 window.currentID   = -1;
@@ -13,6 +14,8 @@ let nameToScene = new Map();
 let nextSceneID = 0;
 let sceneNames = [];
 let sceneList  = [];
+
+export let lcb, rcb;
 
 let enableSceneReloading = false;
 
@@ -47,6 +50,7 @@ window.chooseFlag = chooseFlag;
 
 const onReloadDefault = async (thisScene, model, ctx, ctxForever) => {
    model.clear();
+   global.gltfRoot.clearNodes();
    if (thisScene.init) {
       return thisScene.init(model);
    } else {
@@ -112,13 +116,18 @@ const addDemoButtons = demoNames => {
       if (names[n] != "Speak") {
          header.innerHTML += '<button onclick=chooseFlag("' + names[n] + '");'
                  + 'window.syncDemos();>' + names[n] + '</button>';
+         clay.widgets.add('label').info(names[n])
+	                          .move(1,1.7-n*.1,.7)
+	                          .turnY(Math.PI/6)
+				  .scale(.045);
       }
       else {
          header.innerHTML += '<button id=\"Speak\" onclick=\"window.' + flag + '=!window.' + flag
          + ';window.muteSelf()\">' + names[n] + '</button>';
       }
    }
-
+   lcb = new ControllerBeam(clay.widgets, 'left');
+   rcb = new ControllerBeam(clay.widgets, 'right');
    
    header.innerHTML += "<br>";
 
@@ -254,6 +263,9 @@ function runDemo(demo) {
       // default : remove all the previous demos when starting a new one
       // might be useful to change this into something else if want to show more demos at once
       clay.model.clear();
+      global.gltfRoot.clearNodes();
+      clay.model.setUniform('1i', 'uProcedure', 0);
+
 
       demo.ctx = {};
 
@@ -295,7 +307,7 @@ function runDemo(demo) {
          
          demo._isReady = true;
          if (!demo.world.display) {
-            console.warn("no display function");
+            // console.warn("no display function");
          }
       }
 
@@ -329,6 +341,7 @@ function stopDemo(demo) {
          }
       }
       clay.model.clear();
+      global.gltfRoot.clearNodes();
       currentDemo = null;
    }
 }

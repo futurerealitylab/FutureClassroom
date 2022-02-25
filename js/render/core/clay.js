@@ -1,5 +1,6 @@
 "use strict";
 import { scenes } from "/js/handle_scenes.js";
+import * as cg from "./cg.js";
 
 import * as keyboardInput from "../../util/input_keyboard.js";
 
@@ -309,8 +310,17 @@ let drawMesh = (mesh, materialId, isTriangleMesh, textureSrc) => {
    setUniform('Matrix4fv', 'uPhong', false, [a[0],a[1],a[2],0, d[0],d[1],d[2],0, s[0],s[1],s[2],s[3], t[0],t[1],t[2],t[3]]);
 
    if (textureSrc) {
-      // LOAD THE TEXTURE IF IT HAS NOT BEEN LOADED.
-      if (!textures.hasOwnProperty(textureSrc)) { 
+     // LOAD THE TEXTURE IF IT HAS NOT BEEN LOADED.
+     if (!textures.hasOwnProperty(textureSrc)) {
+       if (textureSrc == 'camera') {
+         // VIDEO TEXTURE FROM THE CAMERA CAN START IMMEDIATELY
+         textures[textureSrc] = gl.createTexture();
+         gl.bindTexture   (gl.TEXTURE_2D, textures[textureSrc]);
+         gl.texImage2D    (gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, video);
+         gl.texParameteri (gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+         gl.texParameteri (gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+       }
+       else {
          // MARK AS LOADING IN-PROGRESS TO AVOID LOADING REPEATEDLY
          textures[textureSrc] = TEXTURE_LOAD_STATE_UNFINISHED; 
          let image = new Image();
@@ -341,11 +351,15 @@ let drawMesh = (mesh, materialId, isTriangleMesh, textureSrc) => {
             }
          }
          image.src = textureSrc;
-      }
-      else if (textures[textureSrc] != TEXTURE_LOAD_STATE_UNFINISHED) {                                         // IF TEXTURE IS LOADED, TELL THE GPU ABOUT IT.
-         gl.activeTexture(gl.TEXTURE0);
-         gl.bindTexture(gl.TEXTURE_2D, textures[textureSrc]);
-      }
+       }
+     }
+     else if (textures[textureSrc] != TEXTURE_LOAD_STATE_UNFINISHED) { // IF TEXTURE IS LOADED, TELL THE GPU ABOUT IT.
+       gl.activeTexture(gl.TEXTURE0);
+       gl.bindTexture(gl.TEXTURE_2D, textures[textureSrc]);
+       // VIDEO TEXTURE FROM THE CAMERA NEEDS TO BE REFRESHED REPEATEDLY
+       if (textureSrc == 'camera')
+          gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, window.video);
+     }
    }
 
    // CANCEL DRAWING IF THE MESH DOES NOT EXIST
@@ -355,6 +369,8 @@ let drawMesh = (mesh, materialId, isTriangleMesh, textureSrc) => {
 
    setUniform('1i', 'uSampler', 0);                            // SPECIFY TEXTURE INDEX.
    setUniform('1f', 'uTexture', isTexture(textureSrc)? 1 : 0); // ARE WE RENDERING A TEXTURE?
+   setUniform('1i', 'uVideo', textureSrc == 'camera'); // IS THIS A VIDEO TEXTURE FROM THE CAMERA?
+
    if (this.views.length == 1) {
       setUniform('Matrix4fv', 'uProj', false, this.views[0].projectionMatrix);
       setUniform('Matrix4fv', 'uView', false, this.views[0].viewMatrix);
@@ -1513,7 +1529,7 @@ let S = [], vm, vmi, computeQuadric, activeSet, implicitSurface,
       if (isModeler) {
          if (window.animate)
             window.animate();
-         model.render(vm);
+         root.render(vm);
          model.setControls();
       }
 
@@ -1560,7 +1576,7 @@ let S = [], vm, vmi, computeQuadric, activeSet, implicitSurface,
       let deltaTime = time - prevTime;
       fps = .1 * fps + .9 / deltaTime;
       prevTime = time;
-   
+
       setUniform('1f', 'uOpacity', 1);
       let r3 = Math.sqrt(1/3);
       setUniform('3fv', 'uLDir', [r3,r3,r3, -r3,-r3,-r3]);              // SET GPU LIGHTS
@@ -1928,7 +1944,8 @@ let S = [], vm, vmi, computeQuadric, activeSet, implicitSurface,
       rotatey = rotateModel(rotatey, rotateyState, matrix_rotateY);
       modelMatrix = matrix_multiply(matrix_translate([0,1.5,0]), modelMatrix);
 
-      vm  = matrix_multiply(viewMatrix, modelMatrix);
+      //vm  = matrix_multiply(viewMatrix, modelMatrix);
+      vm  = viewMatrix;
       vmi = matrix_inverse(vm);
    }
 
@@ -2962,7 +2979,6 @@ function Node(_form) {
       this._color    = [1,1,1];
       this._info     = '';
       this._melt     = false;
-      this._parent   = null;
       this._texture  = '';
       this._precision = 1;
       m.identity();
@@ -2974,6 +2990,7 @@ function Node(_form) {
       return this;
    }
 
+   this._parent = null;
    this.clear();
 
    this.child = i => this._children[i];
@@ -3013,6 +3030,7 @@ function Node(_form) {
     this._children.splice(i, 1);
       return this;
    }
+   this.nChildren = ()      => { return this._children.length;      }
    this.animate   = func    => { this._animate = func; return this; }
    this.identity  = ()      => { m.identity();         return this; }
    this.aimX      = vec     => { m.aimX(vec);          return this; }
@@ -3040,6 +3058,24 @@ function Node(_form) {
                                 this._blend = tf === undefined ? false : tf; return this; }
    this.melt      = tf      => { this._melt  = tf === undefined ? true : tf; return this; }
    this.precision = value   => { this._precision = value; return this; }
+   this.getGlobalMatrix = () => {
+      let M = this.getMatrix();
+      for (let node = this._parent ; node ; node = node._parent)
+         M = cg.mMultiply(node.getMatrix(), M);
+      return M;
+   }
+
+   this.setUniform = (type, name, a, b, c, d, e, f) => {
+      let clay = this._clay;
+      if (clay) {
+	 let gl = clay.gl;
+         let program = clay.clayPgm.program.program;
+         let loc = gl.getUniformLocation(program, name);
+         (gl['uniform' + type])(loc, a, b, c, d, e, f);
+      }
+   }
+
+   this.viewMatrix = n => cg.mInverse(views[n ? 1 : 0]._viewMatrix);
 
    window.controlAction = ch => {
       if (model._controlActions[ch])
@@ -3070,7 +3106,11 @@ function Node(_form) {
          }
          previousTime = this.time;
       }
+
       rm = matrix_multiply(pm, m.getValue());
+      if (this == model)
+         rm = matrix_multiply(rm, modelMatrix);
+
       if (form == 'root')
          S = [];
       else if (form) {
@@ -3099,8 +3139,12 @@ function Node(_form) {
 
 // EXPOSE A ROOT NODE FOR EXTERNAL MODELING.
 
-   let model = new Node('root');
-   this.model = model;
+   let root = new Node('root');
+   this.widgets = root.add();
+   this.model = root.add();
+   let model = this.model;
+   model._clay = this;
    let startTime = Date.now() / 1000;
 }
+
 
