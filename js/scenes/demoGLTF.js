@@ -1,3 +1,7 @@
+/*
+   This demo shows a way to incorporate GLTF models that were
+   previously created in external modeling programs.
+*/
 import * as global from "../global.js";
 import { Gltf2Node } from "../render/nodes/gltf2.js";
 

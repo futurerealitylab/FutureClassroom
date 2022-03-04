@@ -10,16 +10,16 @@ export default () => {
    return {
       enableSceneReloading: true,
       scenes: [
-         { name: "Demo4D"     , path: "./demo4D.js"      },
-         { name: "DemoBlobs"  , path: "./demoBlobs.js"   },
-         { name: "DemoCB"     , path: "./demoCB.js"      },
-         { name: "DemoCamera" , path: "./demoCamera.js"  },
-         { name: "DemoCube"   , path: "./demoCube.js"    },
-         { name: "DemoCube2"  , path: "./demoCube2.js"   },
-         { name: "DemoDots"   , path: "./demoDots.js"    },
-         { name: "DemoHUD"    , path: "./demoHUD.js"     },
-         { name: "DemoLabel"  , path: "./demoLabel.js"   },
-         { name: "DemoGLTF"   , path: "./demoGLTF.js"    },
+         { name: "Demo4D"        , path: "./demo4D.js"        },
+         { name: "DemoBlobs"     , path: "./demoBlobs.js"     },
+         { name: "DemoCube"      , path: "./demoCube.js"      },
+         { name: "DemoDots"      , path: "./demoDots.js"      },
+         { name: "DemoGLTF"      , path: "./demoGLTF.js"      },
+         { name: "DemoGreenThumb", path: "./demoGreenThumb.js"},
+         { name: "DemoHUD"       , path: "./demoHUD.js"       },
+         { name: "DemoLabel"     , path: "./demoLabel.js"     },
+         { name: "DemoNoisyCube" , path: "./demoNoisyCube.js" },
+         { name: "DemoZoom"      , path: "./demoZoom.js"      },
       ]
    };
 }

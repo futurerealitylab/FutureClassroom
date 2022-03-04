@@ -22,8 +22,8 @@ then go to http://localhost:8000
 2. Open Google Chrome browser on your VR headset
 3. Go to chrome://flags/
 4. Search: ***"Insecure origins treated as secure"*** and enable the flag
-5. Add http://[your-computer's-ip-address]:8000 to the text box under the security setting. For example: http://10.19.127.1:8000
-7. Relunch the brower on your VR headset and go to http://[your-computer's-ip-address]:8000 
+5. Add http://[your-computer's-ip-address]:8000 to the text box. For example: http://10.19.127.1:8000
+7. Relunch the browser on your VR headset and go to http://[your-computer's-ip-address]:8000 
 
 # How to debug in VR
 
@@ -40,3 +40,13 @@ then go to http://localhost:8000
 3. Go to [scenes.js](https://github.com/futurerealitylab/FutureClassroom/tree/master/js/scenes/scenes.js), add the name of your demo and its path to the returned value of [```scenes```](https://github.com/futurerealitylab/FutureClassroom/tree/master/js/scenes/scenes.js#L12)
 4. Note that the [```enableSceneReloading```](https://github.com/futurerealitylab/FutureClassroom/tree/master/js/scenes/scenes.js#L11) is set to true so that you can hot-reload the changes in your demo. 
 
+# How to enable your hand tracking
+
+1. Enable the experimental feature in the browser (Oculus Browser 11)
+2. Visit chrome://flags/
+3. Enable WebXR experiences with joints tracking (#webxr-hands)
+4. Enable WebXR Layers depth sorting (#webxr-depth-sorting)
+5. Enable WebXR Layers (#webxr-layers)
+6. Enable phase sync support (#webxr-phase-sync)
+7. Enable "Auto Enable Hands or Controllers" (Quest Settings (Gear Icon) -> Device -> Hands and Controllers)
+8. Enter the VR experience

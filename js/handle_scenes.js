@@ -116,18 +116,18 @@ const addDemoButtons = demoNames => {
       if (names[n] != "Speak") {
          header.innerHTML += '<button onclick=chooseFlag("' + names[n] + '");'
                  + 'window.syncDemos();>' + names[n] + '</button>';
-         clay.widgets.add('label').info(names[n])
-	                          .move(1,1.7-n*.1,.7)
-	                          .turnY(Math.PI/6)
-				  .scale(.045);
+         clay.vrWidgets.add('label').info(names[n])
+	                            .move(1,1.7-n*.1,.7)
+	                            .turnY(Math.PI/6)
+				    .scale(.045);
       }
       else {
          header.innerHTML += '<button id=\"Speak\" onclick=\"window.' + flag + '=!window.' + flag
          + ';window.muteSelf()\">' + names[n] + '</button>';
       }
    }
-   lcb = new ControllerBeam(clay.widgets, 'left');
-   rcb = new ControllerBeam(clay.widgets, 'right');
+   lcb = new ControllerBeam(clay.vrWidgets, 'left');
+   rcb = new ControllerBeam(clay.vrWidgets, 'right');
    
    header.innerHTML += "<br>";
 

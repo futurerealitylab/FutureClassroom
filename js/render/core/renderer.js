@@ -186,10 +186,12 @@ const int nl = 2;                    // NUMBER OF LIGHTS
  uniform float uOpacity;
  uniform vec3  uLDir[nl], uLCol[nl]; // LIGHTING
  uniform mat4  uPhong;               // MATERIAL
- uniform sampler2D uSampler;
+ uniform sampler2D uSampler0;
  uniform float uTexture;
+ uniform int uTransparentTexture;
  uniform int uVideo;
  uniform int uProcedure;
+ uniform int uWhitescreen;
 
  in vec3  vAPos, vPos, vNor, vRGB;   // POSITION, NORMAL, COLOR
  in float vWeights[6];               // BLOBBY WEIGHTS
@@ -235,14 +237,44 @@ float noise(vec3 point) {
                + specular.rgb * pow(max(0., R.z), specular.w)
        );
     }
-    vec4 texture = texture(uSampler, vUV);
-    color *= mix(vec3(1.), texture.rgb, texture.a * uTexture);
-
-    if (uVideo > 0)
-       color = texture.rgb * texture.rgb;
 
     float opacity = uOpacity;
-    if (uProcedure > 0) {
+
+    if (uVideo == 0) {
+       vec4 texture = texture(uSampler0, vUV);
+       color *= mix(vec3(1.), texture.rgb, texture.a * uTexture);
+       if (uTransparentTexture == 1) {
+	  color = 5. * ambient;
+          opacity *= max(0., 1. - (texture.r + texture.g + texture.b) / 3.);
+       }
+    }
+
+    // IF VIDEO TEXTURE, REVERSE CAMERA IMAGE AND IMPLEMENT GREENSCREEN.
+
+    if (uVideo == 1) {
+       vec4 video = texture(uSampler0, vUV);
+       color = video.rgb;
+       float s = 4.;
+
+       if (uWhitescreen > 0) {
+           float sum = color.r + color.g + color.b,
+	         diff = max(abs(color.r / color.g - 1.),
+	                max(abs(color.g / color.b - 1.),
+	                    abs(color.b / color.r - 1.)));
+           if (sum > 1.8 && diff < .2)
+             color = mix(color, vec3(0.,1.,0.), 0.4 * (sum - diff));
+           s = 24.;
+       }
+
+       if (color.g > .1)
+          opacity *= min(1., 1. - s*(1.75*color.g - (color.r + color.b)));
+       if (uWhitescreen == 0)
+          color.g = mix(min(color.g, color.r), color.g, .5 * (2. * color.g - 1.));
+
+       color = color * color;
+    }
+
+    if (uProcedure == 1) {
        opacity = sign(noise(2. * vAPos + vec3(uTime,uTime,uTime)));
     }
 
@@ -1064,8 +1096,8 @@ export class Renderer {
     // gl.clearDepth(-1);
     gl.enable(gl.BLEND);
     gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
-    //gl.enable(gl.CULL_FACE);
-    // gl.cullFace(gl.FRONT);
+    gl.enable(gl.CULL_FACE);
+    //gl.cullFace(gl.FRONT);
 
     let bpe = Float32Array.BYTES_PER_ELEMENT;
     let aPos = gl.getAttribLocation(pgm.program, "aPos");
@@ -1122,27 +1154,37 @@ export class Renderer {
     gl.vertexAttribPointer(aWts1, 3, gl.FLOAT, false, new_vertex_size * bpe, 12 * bpe);
     window.clay.animate(views); 
 
-    if (lcb) lcb.update();
-    if (rcb) rcb.update();
+    if (clay.handsWidget)
+       clay.handsWidget.update();
 
-    let lDown = buttonState.left[0].pressed;
-    let rDown = buttonState.right[0].pressed;
+/*
+	Still to do: register labels so they become responsive buttons.
+*/
 
-    let lClick = clay.widgets._lDownPrev && ! lDown;
-    let rClick = clay.widgets._rDownPrev && ! rDown;
-
-    clay.widgets._lDownPrev = lDown;
-    clay.widgets._rDownPrev = rDown;
-
-    for (let i = 0 ; i < clay.widgets.nChildren() ; i++) {
-       let obj = clay.widgets.child(i);
-       if (obj.getInfo()) {
-          let lHit = lcb.hitLabel(obj);
-          let rHit = rcb.hitLabel(obj);
-	  obj.color(lHit && lDown || rHit && rDown ? [1,0,0] :
-	            lHit || rHit ? [1,.5,.5] : [1,1,1]);
-          if (lHit && lClick || rHit && rClick)
-	     window.chooseFlag(obj.getInfo());
+    if (lcb) {
+       let updateCB = cb => {
+          let m;
+          if (window.handtracking)
+	     m = clay.handsWidget.matrix[cb.hand];
+          cb.update(m);
+          cb.down = m ? clay.handsWidget.pinch[cb.hand]
+                     || clay.handsWidget.bend[cb.hand] > 1
+	              : buttonState[cb.hand][0].pressed;
+          cb.click = cb.downPrev && ! cb.down;
+          cb.downPrev = cb.down;
+       }
+       updateCB(lcb);
+       updateCB(rcb);
+       for (let i = 0 ; i < clay.vrWidgets.nChildren() ; i++) {
+          let obj = clay.vrWidgets.child(i);
+          if (obj.getInfo()) {
+             let lHit = lcb.hitLabel(obj);
+             let rHit = rcb.hitLabel(obj);
+	     obj.color(lHit && lcb.down || rHit && rcb.down ? [1,0,0] :
+	               lHit || rHit ? [1,.5,.5] : [1,1,1]);
+             if ((lHit || rHit) && (lcb.click || rcb.click))
+	        window.chooseFlag(obj.getInfo());
+          }
        }
     }
   }

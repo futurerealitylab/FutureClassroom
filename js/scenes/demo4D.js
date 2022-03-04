@@ -1,3 +1,12 @@
+/*
+   This demo shows a projection of a hypercube down into three dimensions.
+   Even though it is a rigid body in four dimensions, rotating it makes
+   it appear to change shape, since we are only seeing the "3D shadow"
+   of the 4D object.
+
+   You can have the option to set the colors of the edges, which lets
+   you track which edges are aligned with the x,y,z,w axes, respectively.
+*/
 import * as cg from "../render/core/cg.js";
 import { controllerMatrix, buttonState, joyStickState } from "../render/core/controllerInput.js";
 
