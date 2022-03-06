@@ -412,7 +412,7 @@ function updateInputSources(session, frame, refSpace) {
                 headPose.transform.matrix;
 
             for (let source of session.inputSources) {
-                if (source.handedness && source.gamepad) {
+                if (!window.handtracking && source.handedness && source.gamepad) {
                     // if (source.gamepad.buttons[3].pressed) {
                     //     console.log("source.gamepad.buttons[3].pressed", source.gamepad.buttons[3].pressed);
                     // }
