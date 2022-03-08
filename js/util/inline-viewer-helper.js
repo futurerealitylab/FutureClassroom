@@ -177,7 +177,16 @@ export class InlineViewerHelper {
   }
 
   onKeyUp(e) {
+    console.log('keyCode = ', e.keyCode);
     switch (e.keyCode) {
+      case keyboardInput.KEY_ESC:
+        window.isHeader = !window.isHeader;
+        header.style.position = 'absolute';
+        header.style.left = window.isHeader ? '8px' : '-1000px';
+        break;
+      case keyboardInput.KEY_BACKQUOTE:
+        window.isWhitescreen = ! window.isWhitescreen;
+        break;
       case keyboardInput.KEY_Z:
         window.isSlideShow = !window.isSlideShow;
         break;

@@ -1,3 +1,16 @@
+/*
+   This demo shows how objects can "melt" into each other
+   to create blended shapes.
+
+   As long as the object is melted, a new polyhedral mesh
+   will be created at every animation frame.
+
+   Once you hit the 'r' option to "rubberize" it, the model
+   will become a fixed polyhedral mesh. However, because
+   the two underlying spheres are still animating, the
+   mesh will stretch like rubber, since each vertex
+   animates as a weighted blend of those two spheres.
+*/
 export const init = async model => {
    let isAnimate = false, isRubber = false, isTable = true, t = 0;
 

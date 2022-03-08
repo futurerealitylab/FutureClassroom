@@ -23,6 +23,9 @@ import { Node } from "./node.js";
 import { Program } from "./program.js";
 import { DataTexture, VideoTexture } from "./texture.js";
 import { mat4, vec3 } from "../math/gl-matrix.js";
+import { lcb, rcb } from "../../handle_scenes.js";
+import { buttonState } from "./controllerInput.js";
+import * as cg from "./cg.js";
 
 export const ATTRIB = {
   POSITION: 1,
@@ -87,7 +90,7 @@ in vec2  aUV;
 in float aRGB;
 
 out   vec4  vDiffuse, vSpecular;
-out   vec3  vPos, vNor, vRGB;
+out   vec3  vAPos, vPos, vNor, vRGB;
 out   vec2  vUV;
 out   float vWeights[6];
 
@@ -156,6 +159,7 @@ float noise(vec3 point) {
 
       nor = vec4(N, 0.) * uInvModel;
 
+      vAPos = aPos;
       vPos = pos.xyz;
       vNor = nor.xyz;
       vRGB = unpackRGB(aRGB);
@@ -175,22 +179,37 @@ float noise(vec3 point) {
 const Clay_FRAG_SOURCE = `#version 300 es // NEWER VERSION OF GLSL
 precision highp float; // HIGH PRECISION FLOATS
 
-const int nl = 2;                   // NUMBER OF LIGHTS
+const int nl = 2;                    // NUMBER OF LIGHTS
 
  uniform float uTime;                // TIME, IN SECONDS
  uniform float uBlobby;              // BLOBBY FLAG
  uniform float uOpacity;
  uniform vec3  uLDir[nl], uLCol[nl]; // LIGHTING
  uniform mat4  uPhong;               // MATERIAL
- uniform sampler2D uSampler;
+ uniform sampler2D uSampler0;
  uniform float uTexture;
+ uniform int uTransparentTexture;
+ uniform int uVideo;
+ uniform int uProcedure;
+ uniform int uWhitescreen;
 
- in vec3  vPos, vNor, vRGB;     // POSITION, NORMAL, COLOR
- in float vWeights[6];          // BLOBBY WEIGHTS
+ in vec3  vAPos, vPos, vNor, vRGB;   // POSITION, NORMAL, COLOR
+ in float vWeights[6];               // BLOBBY WEIGHTS
  in vec4  vDiffuse, vSpecular;
  in vec2  vUV;
 
  out vec4 fragColor; // RESULT WILL GO HERE
+
+float noise(vec3 point) { 
+  float r = 0.; for (int i=0;i<16;i++) {
+  vec3 D, p = point + mod(vec3(i,i/4,i/8) , vec3(4.0,2.0,2.0)) +
+       1.7*sin(vec3(i,5*i,8*i)), C=floor(p), P=p-C-.5, A=abs(P);
+  C += mod(C.x+C.y+C.z,2.) * step(max(A.yzx,A.zxy),A) * sign(P);
+  D=34.*sin(987.*float(i)+876.*C+76.*C.yzx+765.*C.zxy);P=p-C-.5;
+  r+=sin(6.3*dot(P,fract(D)-.5))*pow(max(0.,1.-2.*dot(P,P)),4.);
+  } 
+  return .5 * sin(r); 
+}
 
  void main() {
     vec3 ambient, diffuse;
@@ -218,10 +237,48 @@ const int nl = 2;                   // NUMBER OF LIGHTS
                + specular.rgb * pow(max(0., R.z), specular.w)
        );
     }
-    vec4 texture = texture(uSampler, vUV);
-    color *= mix(vec3(1.), texture.rgb, texture.a * uTexture);
 
-    fragColor = vec4(sqrt(color * vRGB), 1.0) * uOpacity;
+    float opacity = uOpacity;
+
+    if (uVideo == 0) {
+       vec4 texture = texture(uSampler0, vUV);
+       color *= mix(vec3(1.), texture.rgb, texture.a * uTexture);
+       if (uTransparentTexture == 1) {
+	  color = 5. * ambient;
+          opacity *= max(0., 1. - (texture.r + texture.g + texture.b) / 3.);
+       }
+    }
+
+    // IF VIDEO TEXTURE, REVERSE CAMERA IMAGE AND IMPLEMENT GREENSCREEN.
+
+    if (uVideo == 1) {
+       vec4 video = texture(uSampler0, vUV);
+       color = video.rgb;
+       float s = 4.;
+
+       if (uWhitescreen > 0) {
+           float sum = color.r + color.g + color.b,
+	         diff = max(abs(color.r / color.g - 1.),
+	                max(abs(color.g / color.b - 1.),
+	                    abs(color.b / color.r - 1.)));
+           if (sum > 1.8 && diff < .2)
+             color = mix(color, vec3(0.,1.,0.), 0.4 * (sum - diff));
+           s = 24.;
+       }
+
+       if (color.g > .1)
+          opacity *= min(1., 1. - s*(1.75*color.g - (color.r + color.b)));
+       if (uWhitescreen == 0)
+          color.g = mix(min(color.g, color.r), color.g, .5 * (2. * color.g - 1.));
+
+       color = color * color;
+    }
+
+    if (uProcedure == 1) {
+       opacity = sign(noise(2. * vAPos + vec3(uTime,uTime,uTime)));
+    }
+
+    fragColor = vec4(sqrt(color * vRGB), 1.0) * opacity;
  }
 `; 
 
@@ -1040,7 +1097,7 @@ export class Renderer {
     gl.enable(gl.BLEND);
     gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
     gl.enable(gl.CULL_FACE);
-    // gl.cullFace(gl.FRONT);
+    //gl.cullFace(gl.FRONT);
 
     let bpe = Float32Array.BYTES_PER_ELEMENT;
     let aPos = gl.getAttribLocation(pgm.program, "aPos");
@@ -1096,6 +1153,40 @@ export class Renderer {
     gl.enableVertexAttribArray(aWts1);
     gl.vertexAttribPointer(aWts1, 3, gl.FLOAT, false, new_vertex_size * bpe, 12 * bpe);
     window.clay.animate(views); 
+
+    if (clay.handsWidget)
+       clay.handsWidget.update();
+
+/*
+	Still to do: register labels so they become responsive buttons.
+*/
+
+    if (lcb) {
+       let updateCB = cb => {
+          let m;
+          if (window.handtracking)
+	     m = clay.handsWidget.matrix[cb.hand];
+          cb.update(m);
+          cb.down = m ? clay.handsWidget.pinch[cb.hand]
+                     || clay.handsWidget.bend[cb.hand] > 1
+	              : buttonState[cb.hand][0].pressed;
+          cb.click = cb.downPrev && ! cb.down;
+          cb.downPrev = cb.down;
+       }
+       updateCB(lcb);
+       updateCB(rcb);
+       for (let i = 0 ; i < clay.vrWidgets.nChildren() ; i++) {
+          let obj = clay.vrWidgets.child(i);
+          if (obj.getInfo()) {
+             let lHit = lcb.hitLabel(obj);
+             let rHit = rcb.hitLabel(obj);
+	     obj.color(lHit && lcb.down || rHit && rcb.down ? [1,0,0] :
+	               lHit || rHit ? [1,.5,.5] : [1,1,1]);
+             if ((lHit || rHit) && (lcb.click || rcb.click))
+	        window.chooseFlag(obj.getInfo());
+          }
+       }
+    }
   }
 
   _getRenderTexture(texture) {

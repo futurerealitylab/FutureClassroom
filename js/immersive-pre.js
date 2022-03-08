@@ -2,6 +2,7 @@ import { WebXRButton } from "./util/webxr-button.js";
 import * as global from "./global.js";
 import { Renderer, createWebGLContext } from "./render/core/renderer.js";
 import { Gltf2Node } from "./render/nodes/gltf2.js";
+import { Node } from './render/core/node.js';
 import { mat4, vec3 } from "./render/math/gl-matrix.js";
 import { Ray } from "./render/math/ray.js";
 import { InlineViewerHelper } from "./util/inline-viewer-helper.js";
@@ -24,9 +25,11 @@ import { InputController } from "./util/input_controller.js";
 import { corelink_message } from "./util/corelink_sender.js"
 import { metaroomSyncSender } from "./corelink_handler.js"
 import { Clay } from "./render/core/clay.js";
-
+import { BoxBuilder } from './render/geometry/box-builder.js';
+import { PbrMaterial } from './render/materials/pbr.js';
 window.wsport = 8447;
 window.vr = false;
+window.handtracking = false;
 window.interactMode = 0;
 window.model = 0;
 
@@ -34,6 +37,7 @@ window.model = 0;
 // and devices which only support WebVR.
 import WebXRPolyfill from "./third-party/webxr-polyfill/build/webxr-polyfill.module.js";
 import { updateObject } from "./util/object-sync.js";
+import { updateHandtracking } from "./render/core/handtrackingInput.js";
 if (QueryArgs.getBool("usePolyfill", true)) {
     let polyfill = new WebXRPolyfill();
 }
@@ -49,6 +53,20 @@ let time = 0;
 let gl = null;
 let renderer = null;
 
+let radii = new Float32Array(25);
+let positions = new Float32Array(16*25);
+// Boxes
+let boxes_left = [];
+let boxes_right = [];
+let boxes = { left: boxes_left, right: boxes_right };
+let indexFingerBoxes = { left: null, right: null };
+const defaultBoxColor = {r: 0.5, g: 0.5, b: 0.5};
+const leftBoxColor = {r: 1, g: 0, b: 1};
+const rightBoxColor = {r: 0, g: 1, b: 1};
+let interactionBox = null;
+let leftInteractionBox = null;
+let rightInteractionBox = null;
+
 function initModels() {
     window.models = {};
 /*
@@ -63,6 +81,52 @@ function initModels() {
 global.scene().standingStats(true);
 // global.scene().addNode(window.models['stereo']);
 
+function createBoxPrimitive(r, g, b) {	
+    let boxBuilder = new BoxBuilder();	
+    boxBuilder.pushCube([0, 0, 0], 1);	
+    let boxPrimitive = boxBuilder.finishPrimitive(renderer);	
+    let boxMaterial = new PbrMaterial();	
+    boxMaterial.baseColorFactor.value = [r, g, b, 1];	
+    return renderer.createRenderPrimitive(boxPrimitive, boxMaterial);	
+  }
+
+  function addBox(x, y, z, r, g, b, offset) {
+    let boxRenderPrimitive = createBoxPrimitive(r, g, b);
+    let boxNode = new Node();
+    boxNode.addRenderPrimitive(boxRenderPrimitive);
+    // Marks the node as one that needs to be checked when hit testing.
+    boxNode.selectable = true;
+    return boxNode;
+  }
+
+  function initHands() {
+    for (const box of boxes_left) {
+      global.scene().removeNode(box);
+    }
+    for (const box of boxes_right) {
+      global.scene().removeNode(box);
+    }
+    boxes_left = [];
+    boxes_right = [];
+    boxes = { left: boxes_left, right: boxes_right };
+    if (typeof XRHand !== 'undefined') {
+      for (let i = 0; i <= 24; i++) {
+        const r = .6 + Math.random() * .4;
+        const g = .6 + Math.random() * .4;
+        const b = .6 + Math.random() * .4;
+        boxes_left.push(addBox(0, 0, 0, r, g, b));
+        boxes_right.push(addBox(0, 0, 0, r, g, b));
+      }
+    }
+    if (indexFingerBoxes.left) {
+      global.scene().removeNode(indexFingerBoxes.left);
+    }
+    if (indexFingerBoxes.right) {
+      global.scene().removeNode(indexFingerBoxes.right);
+    }
+    indexFingerBoxes.left = addBox(0, 0, 0, leftBoxColor.r, leftBoxColor.g, leftBoxColor.b);
+    indexFingerBoxes.right = addBox(0, 0, 0, rightBoxColor.r, rightBoxColor.g, rightBoxColor.b);
+  }
 export function initXR() {
     xrButton = new WebXRButton({
         onRequestSession: onRequestSession,
@@ -158,6 +222,7 @@ function onRequestSession() {
     return navigator.xr
         .requestSession("immersive-vr", {
             requiredFeatures: ["local-floor"],
+            optionalFeatures: ["hand-tracking"],
         })
         .then((session) => {
             xrButton.setSession(session);
@@ -168,6 +233,19 @@ function onRequestSession() {
 
 async function onSessionStarted(session) {
     session.addEventListener("end", onSessionEnded);
+
+    session.addEventListener('visibilitychange', e => {
+        // remove hand controller while blurred
+        if(e.session.visibilityState === 'visible-blurred') {
+          for (const box of boxes['left']) {
+            global.scene().removeNode(box);
+          }
+          for (const box of boxes['right']) {
+            global.scene().removeNode(box);
+          }
+        }
+      });
+
 
     //Each input source should define a primary action. A primary action (which will sometimes be shortened to "select action") is a platform-specific action which responds to the user manipulating it by delivering, in order, the events selectstart, select, and selectend. Each of these events is of type XRInputSourceEvent.
     session.addEventListener("selectstart", onSelectStart);
@@ -180,6 +258,7 @@ async function onSessionStarted(session) {
     });
 
     initGL();
+    initHands();
     // scene.inputRenderer.useProfileControllerMeshes(session);
 
     let glLayer = new XRWebGLLayer(session, gl);
@@ -214,8 +293,10 @@ function onSessionEnded(event) {
 }
 
 function updateInputSources(session, frame, refSpace) {
+    
     for (let inputSource of session.inputSources) {
         let targetRayPose = frame.getPose(inputSource.targetRaySpace, refSpace);
+        let offset = 0;
 
         // We may not get a pose back in cases where the input source has lost
         // tracking or does not know where it is relative to the given frame
@@ -244,8 +325,55 @@ function updateInputSources(session, frame, refSpace) {
         // vec3.transformMat4(cursorPos, cursorPos, inputPose.targetRay.transformMatrix);
 
         global.scene().inputRenderer.addCursor(cursorPos);
-
-        if (inputSource.gripSpace) {
+        if(inputSource.hand) {
+            window.handtracking = true;
+            for (const box of boxes[inputSource.handedness]) {
+                global.scene().removeNode(box);
+            }
+    
+            let pose = frame.getPose(inputSource.targetRaySpace, refSpace);
+            if (pose === undefined) {
+                console.log("no pose");
+            }
+    
+            if (!frame.fillJointRadii(inputSource.hand.values(), radii)) {
+                console.log("no fillJointRadii");
+                continue;
+            }
+            if (!frame.fillPoses(inputSource.hand.values(), refSpace, positions)) {
+                console.log("no fillPoses");
+                continue;
+            }
+            const thisAvatar = window.avatars[window.playerid];
+            for (const box of boxes[inputSource.handedness]) {
+                // global.scene().addNode(box);
+                let matrix = positions.slice(offset * 16, (offset + 1) * 16);
+                let jointRadius = radii[offset];
+                offset++;
+                // mat4.getTranslation(box.translation, matrix);
+                // mat4.getRotation(box.rotation, matrix);
+                // box.scale = [jointRadius, jointRadius, jointRadius];
+                updateHandtracking(thisAvatar, {
+                    handedness: inputSource.handedness,
+                    matrix: matrix,
+                    index: offset,
+                    scale: jointRadius,
+                });
+            }
+                
+            // // Render a special box for each index finger on each hand	
+            // const indexFingerBox = indexFingerBoxes[inputSource.handedness];	
+            // global.scene().addNode(indexFingerBox);	
+            // let joint = inputSource.hand.get('index-finger-tip');	
+            // let jointPose = frame.getJointPose(joint, xrImmersiveRefSpace);	
+            // if (jointPose) {	
+            //     let matrix = jointPose.transform.matrix;
+            //     mat4.getTranslation(indexFingerBox.translation, matrix);
+            //     mat4.getRotation(indexFingerBox.rotation, matrix);
+            //     indexFingerBox.scale = [0.02, 0.02, 0.02];	
+            // }
+        } else if (inputSource.gripSpace) {
+            window.handtracking = false;
             let gripPose = frame.getPose(inputSource.gripSpace, refSpace);
             if (gripPose) {
                 // If we have a grip pose use it to render a mesh showing the
@@ -284,7 +412,7 @@ function updateInputSources(session, frame, refSpace) {
                 headPose.transform.matrix;
 
             for (let source of session.inputSources) {
-                if (source.handedness && source.gamepad) {
+                if (!window.handtracking && source.handedness && source.gamepad) {
                     // if (source.gamepad.buttons[3].pressed) {
                     //     console.log("source.gamepad.buttons[3].pressed", source.gamepad.buttons[3].pressed);
                     // }
@@ -428,7 +556,7 @@ function onXRFrame(t, frame) {
                     buttons: source.gamepad.buttons,
                     axes: source.gamepad.axes
                 });
-            }
+            } 
         }
     // }
 

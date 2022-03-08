@@ -1,3 +1,10 @@
+/*
+   This demo shows how you can use the model.deltaTime parameter
+   to do simple physics simulations, iteratively advancing the
+   simulation at each animation frame based on how much time
+   has advanced since the previous animation frame.
+*/
+
 import * as cg from "../render/core/cg.js";
 
 export const init = async model => {

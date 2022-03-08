@@ -1,6 +1,8 @@
 "use strict";
 import { scenes } from "/js/handle_scenes.js";
-
+import * as cg from "./cg.js";
+import { controllerMatrix } from "./controllerInput.js";
+import { HandsWidget } from "./handsWidget.js";
 import * as keyboardInput from "../../util/input_keyboard.js";
 
 export function Clay(gl, canvas) {
@@ -231,7 +233,7 @@ let M = new Matrix();
 const TEXTURE_LOAD_STATE_UNFINISHED = 1;
 let textures = {};
 
-const DEFAULT_KEN_FONT = 'media/textures/kens-font.png';
+const DEFAULT_FONT = 'media/textures/kens-font.png';
 
 let isTexture = file => textures[file] && textures[file] != TEXTURE_LOAD_STATE_UNFINISHED && ! textures[file + '_error'];
 this.textureUnload = (file) => {
@@ -298,7 +300,9 @@ function setUniform(type, name, a, b, c, d, e, f) {
 
 let materials = {}, defaultColor;
 
-let drawMesh = (mesh, materialId, isTriangleMesh, textureSrc) => {
+let isNewBackground = 30;
+
+let drawMesh = (mesh, materialId, isTriangleMesh, textureSrc, flags) => {
    let m = M.getValue();
    setUniform('Matrix4fv', 'uModel', false, m);
    setUniform('Matrix4fv', 'uInvModel', false, matrix_inverse(m));
@@ -309,14 +313,23 @@ let drawMesh = (mesh, materialId, isTriangleMesh, textureSrc) => {
    setUniform('Matrix4fv', 'uPhong', false, [a[0],a[1],a[2],0, d[0],d[1],d[2],0, s[0],s[1],s[2],s[3], t[0],t[1],t[2],t[3]]);
 
    if (textureSrc) {
-      // LOAD THE TEXTURE IF IT HAS NOT BEEN LOADED.
-      if (!textures.hasOwnProperty(textureSrc)) { 
+     // LOAD THE TEXTURE IF IT HAS NOT BEEN LOADED.
+     if (!textures.hasOwnProperty(textureSrc)) {
+       if (textureSrc == 'camera') {
+         // VIDEO TEXTURE FROM THE CAMERA CAN START IMMEDIATELY
+         textures[textureSrc] = gl.createTexture();
+         gl.bindTexture   (gl.TEXTURE_2D, textures[textureSrc]);
+         gl.texImage2D    (gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, videoFromCamera);
+         gl.texParameteri (gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+         gl.texParameteri (gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+       }
+       else {
          // MARK AS LOADING IN-PROGRESS TO AVOID LOADING REPEATEDLY
          textures[textureSrc] = TEXTURE_LOAD_STATE_UNFINISHED; 
          let image = new Image();
          image.onload = function(event) {
             try {
-               if (textureSrc != DEFAULT_KEN_FONT) {
+               if (textureSrc != DEFAULT_FONT) {
                   textures[textureSrc] = gl.createTexture();
                   gl.bindTexture   (gl.TEXTURE_2D, textures[textureSrc]);
                   gl.texImage2D    (gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, this);
@@ -341,11 +354,15 @@ let drawMesh = (mesh, materialId, isTriangleMesh, textureSrc) => {
             }
          }
          image.src = textureSrc;
-      }
-      else if (textures[textureSrc] != TEXTURE_LOAD_STATE_UNFINISHED) {                                         // IF TEXTURE IS LOADED, TELL THE GPU ABOUT IT.
-         gl.activeTexture(gl.TEXTURE0);
-         gl.bindTexture(gl.TEXTURE_2D, textures[textureSrc]);
-      }
+       }
+     }
+     else if (textures[textureSrc] != TEXTURE_LOAD_STATE_UNFINISHED) {
+       gl.activeTexture(gl.TEXTURE0);
+       gl.bindTexture(gl.TEXTURE_2D, textures[textureSrc]);
+       // VIDEO TEXTURE FROM THE CAMERA NEEDS TO BE REFRESHED REPEATEDLY
+       if (textureSrc == 'camera')
+          gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, videoFromCamera);
+     }
    }
 
    // CANCEL DRAWING IF THE MESH DOES NOT EXIST
@@ -353,8 +370,14 @@ let drawMesh = (mesh, materialId, isTriangleMesh, textureSrc) => {
       return;
    }
 
-   setUniform('1i', 'uSampler', 0);                            // SPECIFY TEXTURE INDEX.
+   setUniform('1i', 'uSampler0', 0);                           // SPECIFY TEXTURE INDICES.
    setUniform('1f', 'uTexture', isTexture(textureSrc)? 1 : 0); // ARE WE RENDERING A TEXTURE?
+   setUniform('1i', 'uVideo', textureSrc == 'camera'); // IS THIS A VIDEO TEXTURE FROM THE CAMERA?
+
+   if (flags)
+      for (let flag in flags)
+         setUniform('1i', flag, 1);
+
    if (this.views.length == 1) {
       setUniform('Matrix4fv', 'uProj', false, this.views[0].projectionMatrix);
       setUniform('Matrix4fv', 'uView', false, this.views[0].viewMatrix);
@@ -375,6 +398,10 @@ let drawMesh = (mesh, materialId, isTriangleMesh, textureSrc) => {
          gl.drawArrays(drawPrimitiveType, 0, vertexCount);
       }
    }
+
+   if (flags)
+      for (let flag in flags)
+         setUniform('1i', flag, 0);
 }
 
 
@@ -939,6 +966,11 @@ function Blobs() {
    formMesh.tubeZ = cylinderZMesh;
    formMesh.cube  = cubeMesh;
 
+   formMesh.square  = squareMesh;
+   formMesh.sphere2 = createMesh(12, 6, uvToSphere);
+   formMesh.tube2   = createMesh(12, 2, uvToTube);
+
+
    //*****************************************************************************
 
 
@@ -1409,7 +1441,7 @@ let S = [], vm, vmi, computeQuadric, activeSet, implicitSurface,
 
    // DRAW ROUTINE THAT ALLOWS CUSTOM COLORS, TEXTURES AND TRANSFORMATIONS
 
-   let draw = (mesh,color,move,turn,size,texture) => {
+   let draw = (mesh,color,move,turn,size,texture,flags) => {
 
       // IF NEEDED, CREATE A NEW MATERIAL FOR THIS COLOR.
 
@@ -1446,7 +1478,7 @@ let S = [], vm, vmi, computeQuadric, activeSet, implicitSurface,
       if (size)
          M.scale(size);
 
-      drawMesh(mesh, color, false, texture);
+      drawMesh(mesh, color, false, texture, flags);
 
       if (move || turn || size)
          M.restore();
@@ -1511,9 +1543,42 @@ let S = [], vm, vmi, computeQuadric, activeSet, implicitSurface,
       // HANDLE LOADING A NEW SCENE
 
       if (isModeler) {
+         if (window.vr)
+	    this.vrWidgets.identity();
+         else
+	    this.vrWidgets.scale(0);
+
          if (window.animate)
             window.animate();
-         model.render(vm);
+
+	 if (window.isHeader) {
+            videoScreen1.scale(0);
+            videoScreen2.scale(0);
+         }
+         else {
+	    let s = 3.8;
+	    let videoScreen = model._isHUD ? videoScreen1 : videoScreen2;
+            videoScreen.setMatrix(cg.mInverse(views[0].viewMatrix))
+	               .move(0,0,-.2*s).turnY(Math.PI).scale(.3197*s,.2284*s,.001);
+/*
+            // Still to do: grab this image in response to a keystroke
+	    // (user takes picture while not in the frame),
+	    // then use it as the reference image for
+	    // removing background from videoFromCamera,
+	    // for when the user has no greenscreen.
+
+            let context = window.imageFromVideo.getContext('2d');
+            context.drawImage(videoFromCamera, 0, 0, 640, 480);
+	    let data = context.getImageData(0, 0, 640, 480).data;
+
+	    // If we composite on the GPU, then after doing
+	    // the call to drawImage() we can just pass
+	    // window.imageFromVideo into texImage2D.
+*/
+         }
+
+         setUniform('1i', 'uWhitescreen', window.isWhitescreen);
+         root.render(vm);
          model.setControls();
       }
 
@@ -1560,7 +1625,7 @@ let S = [], vm, vmi, computeQuadric, activeSet, implicitSurface,
       let deltaTime = time - prevTime;
       fps = .1 * fps + .9 / deltaTime;
       prevTime = time;
-   
+
       setUniform('1f', 'uOpacity', 1);
       let r3 = Math.sqrt(1/3);
       setUniform('3fv', 'uLDir', [r3,r3,r3, -r3,-r3,-r3]);              // SET GPU LIGHTS
@@ -1592,7 +1657,7 @@ let S = [], vm, vmi, computeQuadric, activeSet, implicitSurface,
 
       // DRAW THE TABLE
 
-      if (isTable) {
+      if (isTable && window.isHeader) {
          let inches = 0.0254,
              radius     = (70 + 11/16) * inches / 2,
 	     height     = 29 * inches,
@@ -1811,7 +1876,7 @@ let S = [], vm, vmi, computeQuadric, activeSet, implicitSurface,
                                                  info   : S[n].info
 					       });
                }
-               draw(formMesh[name], materialId, null, null, null, S[n].texture);
+               draw(formMesh[name], materialId, null, null, null, S[n].texture, S[n].flags);
                M.restore();
                if (m.texture)
                   delete m.texture;
@@ -1923,12 +1988,10 @@ let S = [], vm, vmi, computeQuadric, activeSet, implicitSurface,
          }
          return rotate;
       }
-      modelMatrix = matrix_multiply(matrix_translate([0,-1.5,0]), modelMatrix);
       rotatex = rotateModel(rotatex, rotatexState, matrix_rotateX);
       rotatey = rotateModel(rotatey, rotateyState, matrix_rotateY);
-      modelMatrix = matrix_multiply(matrix_translate([0,1.5,0]), modelMatrix);
 
-      vm  = matrix_multiply(viewMatrix, modelMatrix);
+      vm  = viewMatrix;
       vmi = matrix_inverse(vm);
    }
 
@@ -2962,9 +3025,10 @@ function Node(_form) {
       this._color    = [1,1,1];
       this._info     = '';
       this._melt     = false;
-      this._parent   = null;
       this._texture  = '';
       this._precision = 1;
+      this._flags    = {};
+      this._isHUD    = false;
       m.identity();
       this._controlActions = {};
       this.resetControls();
@@ -2974,6 +3038,7 @@ function Node(_form) {
       return this;
    }
 
+   this._parent = null;
    this.clear();
 
    this.child = i => this._children[i];
@@ -3001,6 +3066,7 @@ function Node(_form) {
       child._melt   = null;
       child._parent = this;
       child._precision = null;
+      child._flags  = null;
       return child;
    }
    this.remove = arg => { // ARG CAN BE EITHER AN INDEX OR A CHILD NODE
@@ -3013,6 +3079,7 @@ function Node(_form) {
     this._children.splice(i, 1);
       return this;
    }
+   this.nChildren = ()      => { return this._children.length;      }
    this.animate   = func    => { this._animate = func; return this; }
    this.identity  = ()      => { m.identity();         return this; }
    this.aimX      = vec     => { m.aimX(vec);          return this; }
@@ -3040,6 +3107,39 @@ function Node(_form) {
                                 this._blend = tf === undefined ? false : tf; return this; }
    this.melt      = tf      => { this._melt  = tf === undefined ? true : tf; return this; }
    this.precision = value   => { this._precision = value; return this; }
+   this.getGlobalMatrix = () => {
+      let M = this.getMatrix();
+      for (let node = this._parent ; node ; node = node._parent)
+         M = cg.mMultiply(node.getMatrix(), M);
+      return M;
+   }
+   this.flag = (name, value)  => {
+      if (value === undefined) value = 1;
+      if (value) {
+         if (this._flags == null)
+            this._flags = {};
+         this._flags[name] = true;
+      }
+      else if (this._flags)
+         delete this._flags[name];
+      return this;
+   }
+   this.hud = () => {
+      this._isHUD = true;
+      this.setMatrix(this.viewMatrix()).move(0,0,-.7).turnY(Math.PI);
+   }
+
+   this.setUniform = (type, name, a, b, c, d, e, f) => {
+      let clay = this._clay;
+      if (clay) {
+	 let gl = clay.gl;
+         let program = clay.clayPgm.program.program;
+         let loc = gl.getUniformLocation(program, name);
+         (gl['uniform' + type])(loc, a, b, c, d, e, f);
+      }
+   }
+
+   this.viewMatrix = n => cg.mInverse(views[n ? 1 : 0]._viewMatrix);
 
    window.controlAction = ch => {
       if (model._controlActions[ch])
@@ -3070,7 +3170,11 @@ function Node(_form) {
          }
          previousTime = this.time;
       }
+
       rm = matrix_multiply(pm, m.getValue());
+      if (this == model)
+         rm = matrix_multiply(rm, modelMatrix);
+
       if (form == 'root')
          S = [];
       else if (form) {
@@ -3084,9 +3188,10 @@ function Node(_form) {
             rounded: this.prop('_bevel'),
             sign: 1,
             symmetry: 0,
-            texture: form == 'label' ? DEFAULT_KEN_FONT
+            texture: form == 'label' ? DEFAULT_FONT
 	                             : this.prop('_texture'),
             form: form,
+	    flags: this.prop('_flags'),
             M: matrix_multiply(vmi, rm)
          };
          computeQuadric(s);
@@ -3099,8 +3204,17 @@ function Node(_form) {
 
 // EXPOSE A ROOT NODE FOR EXTERNAL MODELING.
 
-   let model = new Node('root');
-   this.model = model;
+   let root = new Node('root');
+   this.vrWidgets = root.add();
+   this.handsWidget = new HandsWidget(this.vrWidgets);
+   let videoScreen1 = root.add('cube').texture('camera').scale(0);
+   this.model = root.add();
+   let videoScreen2 = root.add('cube').texture('camera').scale(0);
+   let model = this.model;
+   model._clay = this;
    let startTime = Date.now() / 1000;
+   window.isHeader = true;
+   window.isWhitescreen = false;
 }
+
 
