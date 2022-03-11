@@ -373,6 +373,7 @@ let drawMesh = (mesh, materialId, isTriangleMesh, textureSrc, flags) => {
    setUniform('1i', 'uSampler0', 0);                           // SPECIFY TEXTURE INDICES.
    setUniform('1f', 'uTexture', isTexture(textureSrc)? 1 : 0); // ARE WE RENDERING A TEXTURE?
    setUniform('1i', 'uVideo', textureSrc == 'camera'); // IS THIS A VIDEO TEXTURE FROM THE CAMERA?
+   setUniform('1i', 'uMirrored', isMirrored); // IS THE VIDEO TEXTURE MIRRORED?
 
    if (flags)
       for (let flag in flags)
@@ -1559,7 +1560,7 @@ let S = [], vm, vmi, computeQuadric, activeSet, implicitSurface,
 	    let s = 3.8;
 	    let videoScreen = model._isHUD ? videoScreen1 : videoScreen2;
             videoScreen.setMatrix(cg.mInverse(views[0].viewMatrix))
-	               .move(0,0,-.2*s).turnY(Math.PI).scale(.3197*s,.2284*s,.001);
+	               .move(0,0,-.3*s).turnY(Math.PI).scale(.3197*s,.2284*s,.001).scale(.227);
 /*
             // Still to do: grab this image in response to a keystroke
 	    // (user takes picture while not in the frame),
@@ -3126,8 +3127,11 @@ function Node(_form) {
    }
    this.hud = () => {
       this._isHUD = true;
-      this.setMatrix(this.viewMatrix()).move(0,0,-.7).turnY(Math.PI);
+      this.setMatrix(this.viewMatrix()).move(0,0,-1).turnY(Math.PI);
    }
+   this.audio = src => {return this;}
+   this.playAudio = () => {return this;}
+   this.pauseAudio = () => {return this;}
 
    this.setUniform = (type, name, a, b, c, d, e, f) => {
       let clay = this._clay;
@@ -3214,6 +3218,7 @@ function Node(_form) {
    model._clay = this;
    let startTime = Date.now() / 1000;
    window.isHeader = true;
+   window.isMirrored = true;
    window.isWhitescreen = false;
 }
 

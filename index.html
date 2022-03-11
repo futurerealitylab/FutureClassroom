@@ -40,6 +40,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
   <!-- <script src="https://cdn.plot.ly/plotly-latest.min.js"></script> -->
   <!-- <script src="js/third-party/plotly-latest.min.js"></script> -->
   <script src="js/buffer-browser.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
 </head>
 
 <body>
@@ -78,6 +80,46 @@ if (! window.vr) {
               .then(function(stream) { videoFromCamera.srcObject = stream; },
                     function(error ) { console.log(error); });
 }
+</script>
+<script type="module">
+  if(! window.vr) {
+    const videoElement = window.videoFromCamera;
+    window.handInfo = [];
+
+    function onResults(results) {
+      window.handInfo = [];
+      if (results.multiHandLandmarks) {
+        let handNum = results.multiHandLandmarks.length;
+        for (let i = 0; i < handNum; i ++) {
+          window.handInfo.push({  
+                                  handedness: results.multiHandedness[i], 
+                                  landmarks: results.multiHandLandmarks[i],
+                                  // worldLandmarks: results.multiHandWorldLandmarks[i], 
+                                })
+        }
+      }
+    }
+  
+    const hands = new Hands({locateFile: (file) => {
+      return `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`;
+    }});
+    hands.setOptions({
+      maxNumHands: 2,
+      modelComplexity: 0,
+      minDetectionConfidence: 0.5,
+      minTrackingConfidence: 0.5
+    });
+    hands.onResults(onResults);
+  
+    const camera = new Camera(videoElement, {
+      onFrame: async () => {
+        await hands.send({image: videoElement});
+      },
+      width: 1280,
+      height: 720
+    });
+    camera.start();
+  }
 </script>
 </body>
 

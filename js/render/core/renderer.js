@@ -188,9 +188,11 @@ const int nl = 2;                    // NUMBER OF LIGHTS
  uniform mat4  uPhong;               // MATERIAL
  uniform sampler2D uSampler0;
  uniform float uTexture;
+
+ uniform int uMirrored;
+ uniform int uProcedure;
  uniform int uTransparentTexture;
  uniform int uVideo;
- uniform int uProcedure;
  uniform int uWhitescreen;
 
  in vec3  vAPos, vPos, vNor, vRGB;   // POSITION, NORMAL, COLOR
@@ -252,7 +254,7 @@ float noise(vec3 point) {
     // IF VIDEO TEXTURE, REVERSE CAMERA IMAGE AND IMPLEMENT GREENSCREEN.
 
     if (uVideo == 1) {
-       vec4 video = texture(uSampler0, vUV);
+       vec4 video = texture(uSampler0, uMirrored > 0 ? vec2(-vUV.x,vUV.y) : vUV);
        color = video.rgb;
        float s = 4.;
 

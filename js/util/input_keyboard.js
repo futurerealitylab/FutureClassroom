@@ -120,6 +120,7 @@ export function deregisterKeyHandlers() {
     _keyup = null;
 }
 
+export const KEY_TAB = 9;
 export const KEY_L_CONTROL = 17;
 export const KEY_SPACE = 32;
 export const KEY_ESC = 27;

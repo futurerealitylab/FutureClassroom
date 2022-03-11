@@ -36,7 +36,7 @@ export class InlineViewerHelper {
     //this.theta = 2 * Math.PI * ((5 * window.playerid) % 8) / 8;
     this.theta = Math.PI;
     this.lookYaw = this.theta;
-    this.walkPosition = [-Math.sin(this.theta), 0, -Math.cos(this.theta)];
+    this.walkPosition = [-4*Math.sin(this.theta), 0, -4*Math.cos(this.theta)];
 
     this.lookPitch = 0;
     this.viewerHeight = 0;
@@ -179,6 +179,9 @@ export class InlineViewerHelper {
   onKeyUp(e) {
     console.log('keyCode = ', e.keyCode);
     switch (e.keyCode) {
+      case keyboardInput.KEY_TAB:
+        window.isMirrored = !window.isMirrored;
+        break;
       case keyboardInput.KEY_ESC:
         window.isHeader = !window.isHeader;
         header.style.position = 'absolute';

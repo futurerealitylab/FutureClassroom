@@ -262,7 +262,12 @@ async function onSessionStarted(session) {
     // scene.inputRenderer.useProfileControllerMeshes(session);
 
     let glLayer = new XRWebGLLayer(session, gl);
-    session.updateRenderState({ baseLayer: glLayer });
+
+    if (session.isImmersive)
+       session.updateRenderState({ baseLayer: glLayer });
+    else
+       session.updateRenderState({ baseLayer: glLayer,
+                                   inlineVerticalFieldOfView: .24 });
 
     let refSpaceType = session.isImmersive ? "local-floor" : "viewer";
     session.requestReferenceSpace(refSpaceType).then((refSpace) => {
@@ -412,7 +417,7 @@ function updateInputSources(session, frame, refSpace) {
                 headPose.transform.matrix;
 
             for (let source of session.inputSources) {
-                if (!window.handtracking && source.handedness && source.gamepad) {
+                if (source.handedness && source.gamepad) {
                     // if (source.gamepad.buttons[3].pressed) {
                     //     console.log("source.gamepad.buttons[3].pressed", source.gamepad.buttons[3].pressed);
                     // }

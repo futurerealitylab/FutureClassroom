@@ -11,8 +11,6 @@
   recognition of hand gestures and poses.
 */
 
-import { jointMatrix } from "../render/core/handtrackingInput.js";
-
 export const init = async model => {
    let hands = window.clay.handsWidget;
    let cube = model.add('cube');
