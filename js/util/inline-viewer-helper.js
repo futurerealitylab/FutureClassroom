@@ -33,6 +33,7 @@ const WALK_SPEED = 0.02;
 export class InlineViewerHelper {
 
   constructor(canvas, referenceSpace) {
+
     //this.theta = 2 * Math.PI * ((5 * window.playerid) % 8) / 8;
     this.theta = Math.PI;
     this.lookYaw = this.theta;
@@ -49,7 +50,26 @@ export class InlineViewerHelper {
 
     canvas.style.cursor = "grab";
 
+    canvas.addEventListener("mousedown", (event) => {
+      if (window.interactMode == 2) {
+         anidraw.mousedown(event);
+	 return;
+      }
+    });
+
+    canvas.addEventListener("mouseup", (event) => {
+      if (window.interactMode == 2) {
+         anidraw.mouseup(event);
+	 return;
+      }
+    });
+
     canvas.addEventListener("mousemove", (event) => {
+      if (window.interactMode == 2) {
+         anidraw.mousemove(event);
+	 return;
+      }
+
       // Only rotate when the left button is pressed
       if (event.buttons & 1) {
         if(window.interactMode == 0) this.rotateView(event.movementX, event.movementY);
@@ -129,10 +149,6 @@ export class InlineViewerHelper {
     this.dirty = true;
   }
 
-  onKeyDown(e) {
-
-  }
-
   update() {
 
     if(interactMode == 0) {
@@ -176,8 +192,43 @@ export class InlineViewerHelper {
     }
   }
 
+  onKeyDown(e) {
+    if (e.keyCode == 32) this._isSpaceKeyDown = true;
+    if (e.key == 'Shift') this._isShiftKeyDown = true;
+    if (e.key == 'Meta') this._isMetaKeyDown = true;
+    if (e.key == 'Control') this._isControlKeyDown = true;
+   
+    if (window.interactMode == 2) {
+       anidraw.keydown(e);
+       return;
+    }
+  }
+
   onKeyUp(e) {
-    console.log('keyCode = ', e.keyCode);
+    if (e.keyCode == 32) this._isSpaceKeyDown = false;
+    if (e.key == 'Shift') this._isShiftKeyDown = false;
+    if (e.key == 'Meta') this._isMetaKeyDown = false;
+    if (e.key == 'Control') this._isControlKeyDown = false;
+
+    console.log(e.key);
+
+    if (e.key == 'Escape' && this._isShiftKeyDown ||
+        e.key == 'Escape' && this._isMetaKeyDown ||
+        e.key == 'Escape' && this._isControlKeyDown ||
+	e.key == 'z' && this._isSpaceKeyDown) {
+       if (window.interactMode == 2)
+          window.interactMode = 0;
+       else
+          window.interactMode = 2;
+       anidraw.showTimeline(window.interactMode == 2);
+       return;
+    }
+
+    if (window.interactMode == 2) {
+       anidraw.keyup(e);
+       return;
+    }
+
     switch (e.keyCode) {
       case keyboardInput.KEY_TAB:
         window.isMirrored = !window.isMirrored;

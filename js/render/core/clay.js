@@ -4,6 +4,7 @@ import * as cg from "./cg.js";
 import { controllerMatrix } from "./controllerInput.js";
 import { HandsWidget } from "./handsWidget.js";
 import * as keyboardInput from "../../util/input_keyboard.js";
+import { videoHandTracker } from "./videoHandTracker.js";
 
 export function Clay(gl, canvas) {
    let clayPgm = function () {
@@ -302,7 +303,13 @@ let materials = {}, defaultColor;
 
 let isNewBackground = 30;
 
-let drawMesh = (mesh, materialId, isTriangleMesh, textureSrc, flags) => {
+let drawMesh = (mesh, materialId, isTriangleMesh, textureSrc, flags, customShader) => {
+
+   let saveProgram = this.clayPgm.program;
+   if (customShader) {
+      window.customShader = customShader;
+   }
+
    let m = M.getValue();
    setUniform('Matrix4fv', 'uModel', false, m);
    setUniform('Matrix4fv', 'uInvModel', false, matrix_inverse(m));
@@ -316,10 +323,20 @@ let drawMesh = (mesh, materialId, isTriangleMesh, textureSrc, flags) => {
      // LOAD THE TEXTURE IF IT HAS NOT BEEN LOADED.
      if (!textures.hasOwnProperty(textureSrc)) {
        if (textureSrc == 'camera') {
+
          // VIDEO TEXTURE FROM THE CAMERA CAN START IMMEDIATELY
+
          textures[textureSrc] = gl.createTexture();
          gl.bindTexture   (gl.TEXTURE_2D, textures[textureSrc]);
          gl.texImage2D    (gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, videoFromCamera);
+         gl.texParameteri (gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+         gl.texParameteri (gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+
+	 // AS WELL AS THE ANIMATED DRAWING PROGRAM
+
+         textures.anidraw = gl.createTexture();
+         gl.bindTexture   (gl.TEXTURE_2D, textures.anidraw);
+         gl.texImage2D    (gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, anidrawCanvas);
          gl.texParameteri (gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
          gl.texParameteri (gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
        }
@@ -359,9 +376,16 @@ let drawMesh = (mesh, materialId, isTriangleMesh, textureSrc, flags) => {
      else if (textures[textureSrc] != TEXTURE_LOAD_STATE_UNFINISHED) {
        gl.activeTexture(gl.TEXTURE0);
        gl.bindTexture(gl.TEXTURE_2D, textures[textureSrc]);
+
        // VIDEO TEXTURE FROM THE CAMERA NEEDS TO BE REFRESHED REPEATEDLY
-       if (textureSrc == 'camera')
+
+       if (textureSrc == 'camera') {
           gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, videoFromCamera);
+
+          gl.activeTexture(gl.TEXTURE1);
+          gl.bindTexture(gl.TEXTURE_2D, textures.anidraw);
+          gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, anidrawCanvas);
+       }
      }
    }
 
@@ -371,6 +395,7 @@ let drawMesh = (mesh, materialId, isTriangleMesh, textureSrc, flags) => {
    }
 
    setUniform('1i', 'uSampler0', 0);                           // SPECIFY TEXTURE INDICES.
+   setUniform('1i', 'uSampler1', 1);
    setUniform('1f', 'uTexture', isTexture(textureSrc)? 1 : 0); // ARE WE RENDERING A TEXTURE?
    setUniform('1i', 'uVideo', textureSrc == 'camera'); // IS THIS A VIDEO TEXTURE FROM THE CAMERA?
    setUniform('1i', 'uMirrored', isMirrored); // IS THE VIDEO TEXTURE MIRRORED?
@@ -403,6 +428,12 @@ let drawMesh = (mesh, materialId, isTriangleMesh, textureSrc, flags) => {
    if (flags)
       for (let flag in flags)
          setUniform('1i', flag, 0);
+
+   if (customShader) {
+      window.customShader = '';
+      window.clay.clayPgm.program = saveProgram;
+      gl.useProgram(saveProgram);
+   }
 }
 
 
@@ -1442,7 +1473,7 @@ let S = [], vm, vmi, computeQuadric, activeSet, implicitSurface,
 
    // DRAW ROUTINE THAT ALLOWS CUSTOM COLORS, TEXTURES AND TRANSFORMATIONS
 
-   let draw = (mesh,color,move,turn,size,texture,flags) => {
+   let draw = (mesh,color,move,turn,size,texture,flags,customShader) => {
 
       // IF NEEDED, CREATE A NEW MATERIAL FOR THIS COLOR.
 
@@ -1479,7 +1510,7 @@ let S = [], vm, vmi, computeQuadric, activeSet, implicitSurface,
       if (size)
          M.scale(size);
 
-      drawMesh(mesh, color, false, texture, flags);
+      drawMesh(mesh, color, false, texture, flags, customShader);
 
       if (move || turn || size)
          M.restore();
@@ -1537,7 +1568,7 @@ let S = [], vm, vmi, computeQuadric, activeSet, implicitSurface,
       this.updatePgm();
       this.model = model;
       this.views = views;
-      if(window.clay) scenes();
+      if (window.clay) scenes();
       // if (html.bgWindow)
       //    html.bgWindow.style.left = flash ? -screen.width : 0;
 
@@ -1560,22 +1591,8 @@ let S = [], vm, vmi, computeQuadric, activeSet, implicitSurface,
 	    let s = 3.8;
 	    let videoScreen = model._isHUD ? videoScreen1 : videoScreen2;
             videoScreen.setMatrix(cg.mInverse(views[0].viewMatrix))
-	               .move(0,0,-.3*s).turnY(Math.PI).scale(.3197*s,.2284*s,.001).scale(.227);
-/*
-            // Still to do: grab this image in response to a keystroke
-	    // (user takes picture while not in the frame),
-	    // then use it as the reference image for
-	    // removing background from videoFromCamera,
-	    // for when the user has no greenscreen.
-
-            let context = window.imageFromVideo.getContext('2d');
-            context.drawImage(videoFromCamera, 0, 0, 640, 480);
-	    let data = context.getImageData(0, 0, 640, 480).data;
-
-	    // If we composite on the GPU, then after doing
-	    // the call to drawImage() we can just pass
-	    // window.imageFromVideo into texImage2D.
-*/
+	               //.move(0,0,-.3*s).turnY(Math.PI).scale(.3197*s,.2284*s,.001).scale(.227);
+	               .move(0,0,-.3*s).turnY(Math.PI).scale(.3197*s,.2284*s,.001).scale(.181);
          }
 
          setUniform('1i', 'uWhitescreen', window.isWhitescreen);
@@ -1877,7 +1894,7 @@ let S = [], vm, vmi, computeQuadric, activeSet, implicitSurface,
                                                  info   : S[n].info
 					       });
                }
-               draw(formMesh[name], materialId, null, null, null, S[n].texture, S[n].flags);
+               draw(formMesh[name], materialId, null, null, null, S[n].texture, S[n].flags, S[n].customShader);
                M.restore();
                if (m.texture)
                   delete m.texture;
@@ -1994,6 +2011,9 @@ let S = [], vm, vmi, computeQuadric, activeSet, implicitSurface,
 
       vm  = viewMatrix;
       vmi = matrix_inverse(vm);
+
+      if (! window.vr)
+         videoHandTracker.update();
    }
 
    // FIND OUT WHETHER THE MODEL HAS A PARTICULAR NAMED PART
@@ -3029,6 +3049,7 @@ function Node(_form) {
       this._texture  = '';
       this._precision = 1;
       this._flags    = {};
+      this._customShader = '';
       this._isHUD    = false;
       m.identity();
       this._controlActions = {};
@@ -3068,6 +3089,7 @@ function Node(_form) {
       child._parent = this;
       child._precision = null;
       child._flags  = null;
+      child._customShader = null;
       return child;
    }
    this.remove = arg => { // ARG CAN BE EITHER AN INDEX OR A CHILD NODE
@@ -3125,9 +3147,17 @@ function Node(_form) {
          delete this._flags[name];
       return this;
    }
+   this.customShader = value => { 
+      if (window.customShader != value)
+         window.clay.clayPgm.program = null;
+      window.customShader = value; 
+      return this; 
+   }
+
    this.hud = () => {
       this._isHUD = true;
       this.setMatrix(this.viewMatrix()).move(0,0,-1).turnY(Math.PI);
+      return this;
    }
    this.audio = src => {return this;}
    this.playAudio = () => {return this;}
@@ -3137,9 +3167,11 @@ function Node(_form) {
       let clay = this._clay;
       if (clay) {
 	 let gl = clay.gl;
-         let program = clay.clayPgm.program.program;
-         let loc = gl.getUniformLocation(program, name);
-         (gl['uniform' + type])(loc, a, b, c, d, e, f);
+	 if (clay.clayPgm.program) {
+            let program = clay.clayPgm.program.program;
+            let loc = gl.getUniformLocation(program, name);
+            (gl['uniform' + type])(loc, a, b, c, d, e, f);
+         }
       }
    }
 
@@ -3196,6 +3228,7 @@ function Node(_form) {
 	                             : this.prop('_texture'),
             form: form,
 	    flags: this.prop('_flags'),
+	    customShader: this.prop('_customShader'),
             M: matrix_multiply(vmi, rm)
          };
          computeQuadric(s);
@@ -3220,6 +3253,7 @@ function Node(_form) {
    window.isHeader = true;
    window.isMirrored = true;
    window.isWhitescreen = false;
+   window.customShader = '';
 }
 
 

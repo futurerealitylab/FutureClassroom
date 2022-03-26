@@ -176,6 +176,33 @@ float noise(vec3 point) {
    }
 `; 
 
+const CUSTOM_SHADER_CODE_MARKER      = '// CUSTOM SHADER CODE GOES HERE';
+const CUSTOM_SHADER_FUNCTIONS_MARKER = '// CUSTOM SHADER FUNCTIONS GO HERE';
+
+export let clayFragWithCustomShader = str => {
+   let src = Clay_FRAG_SOURCE;
+
+   let functions = '';
+   let SF = 'START_FUNCTIONS',
+       EF = 'END_FUNCTIONS';
+   let j = str.indexOf(SF);
+   if (j >= 0) {
+      let k = str.indexOf(EF);
+      functions = str.substring(j + SF.length, k);
+      str = str.substring(0, j) + str.substring(k + EF.length, str.length);
+   }
+
+   let i0 = src.indexOf(CUSTOM_SHADER_FUNCTIONS_MARKER);
+   let i1 = i0 + CUSTOM_SHADER_FUNCTIONS_MARKER.length;
+   src = src.substring(0, i0) + functions + src.substring(i1, src.length);
+
+   let i = src.indexOf(CUSTOM_SHADER_CODE_MARKER);
+   let n = CUSTOM_SHADER_CODE_MARKER.length;
+   src = src.substring(0, i) + str + src.substring(i+n, src.length);
+
+   return src;
+}
+
 const Clay_FRAG_SOURCE = `#version 300 es // NEWER VERSION OF GLSL
 precision highp float; // HIGH PRECISION FLOATS
 
@@ -186,7 +213,9 @@ const int nl = 2;                    // NUMBER OF LIGHTS
  uniform float uOpacity;
  uniform vec3  uLDir[nl], uLCol[nl]; // LIGHTING
  uniform mat4  uPhong;               // MATERIAL
+ uniform mat4  uProj, uView;         // PROJECTION AND VIEW
  uniform sampler2D uSampler0;
+ uniform sampler2D uSampler1;
  uniform float uTexture;
 
  uniform int uMirrored;
@@ -212,6 +241,8 @@ float noise(vec3 point) {
   } 
   return .5 * sin(r); 
 }
+
+` + CUSTOM_SHADER_FUNCTIONS_MARKER + `
 
  void main() {
     vec3 ambient, diffuse;
@@ -273,11 +304,19 @@ float noise(vec3 point) {
        if (uWhitescreen == 0)
           color.g = mix(min(color.g, color.r), color.g, .5 * (2. * color.g - 1.));
 
+       vec4 anidraw = texture(uSampler1, vUV);
+       color = mix(color, anidraw.rgb, anidraw.a);
+       opacity = mix(opacity, 1., anidraw.a);
+
        color = color * color;
     }
 
     if (uProcedure == 1) {
        opacity = sign(noise(2. * vAPos + vec3(uTime,uTime,uTime)));
+    }
+
+    if (uVideo == 0) {
+` + CUSTOM_SHADER_CODE_MARKER + `
     }
 
     fragColor = vec4(sqrt(color * vRGB), 1.0) * opacity;
@@ -1068,10 +1107,11 @@ export class Renderer {
     let gl = this._gl;
     window.clay.gl = gl;
     if (!window.clay.clayPgm.program) {
+      let fragmentShader = clayFragWithCustomShader(window.customShader ? window.customShader : '');
       window.clay.clayPgm.program = new Program(
         gl,
         Clay_VERTEX_SOURCE,
-        Clay_FRAG_SOURCE
+	fragmentShader,
       );
     }
 

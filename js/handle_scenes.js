@@ -51,6 +51,8 @@ window.chooseFlag = chooseFlag;
 const onReloadDefault = async (thisScene, model, ctx, ctxForever) => {
    model.clear();
    global.gltfRoot.clearNodes();
+   window.customShader = '';
+   window.clay.clayPgm.program = null;
    if (thisScene.init) {
       return thisScene.init(model);
    } else {
@@ -264,7 +266,8 @@ function runDemo(demo) {
       // might be useful to change this into something else if want to show more demos at once
       clay.model.clear();
       global.gltfRoot.clearNodes();
-      clay.model.setUniform('1i', 'uProcedure', 0);
+      window.customShader = '';
+      window.clay.clayPgm.program = null;
 
 
       demo.ctx = {};
@@ -324,6 +327,8 @@ function runDemo(demo) {
          //window.chooseFlag(window.currentName);
       }
    }
+
+   if(window.clay.clayPgm.program) clay.model.setUniform('1i', 'uProcedure', 0);
 }
 
 function stopDemo(demo) {
@@ -342,6 +347,8 @@ function stopDemo(demo) {
       }
       clay.model.clear();
       global.gltfRoot.clearNodes();
+      window.customShader = '';
+      window.clay.clayPgm.program = null;
       currentDemo = null;
    }
 }

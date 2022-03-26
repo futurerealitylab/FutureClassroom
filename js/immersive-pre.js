@@ -1,6 +1,7 @@
 import { WebXRButton } from "./util/webxr-button.js";
 import * as global from "./global.js";
 import { Renderer, createWebGLContext } from "./render/core/renderer.js";
+import { Anidraw } from "./render/core/anidraw.js";
 import { Gltf2Node } from "./render/nodes/gltf2.js";
 import { Node } from './render/core/node.js';
 import { mat4, vec3 } from "./render/math/gl-matrix.js";
@@ -216,6 +217,8 @@ function initGL() {
     window.clay = new Clay(gl, gl.canvas);
     window.clay.addEventListenersToCanvas(gl.canvas);
     
+    window.anidrawCanvas = document.getElementById('anidrawCanvas');
+    window.anidraw = new Anidraw(anidrawCanvas);
 }
 
 function onRequestSession() {
@@ -417,7 +420,7 @@ function updateInputSources(session, frame, refSpace) {
                 headPose.transform.matrix;
 
             for (let source of session.inputSources) {
-                if (source.handedness && source.gamepad) {
+                if (!window.handtracking && source.handedness && source.gamepad) {
                     // if (source.gamepad.buttons[3].pressed) {
                     //     console.log("source.gamepad.buttons[3].pressed", source.gamepad.buttons[3].pressed);
                     // }
