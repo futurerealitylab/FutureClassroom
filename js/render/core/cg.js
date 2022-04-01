@@ -1,5 +1,12 @@
 "use strict";
 
+// MISCELLANEOUS METHODS
+
+   export let round = t => {
+      let v = (100 * Math.max(0, Math.min(1, t)) >> 0) / 100;
+      return v==1 ? '1.00' : '0.' + (v<.1 ? '0' + (v*10>>0) : v*100>>0);
+   }
+
 // VECTOR METHODS
 
    let mixf = (a,b,t,u) => a * (u===undefined ? 1-t : t) + b * (u===undefined ? t : u);

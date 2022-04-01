@@ -23,7 +23,8 @@ export const init = async model => {
       label.add('label').move(0,-line,0).scale(.5);
 
    model.animate(() => {
-      label.setMatrix(model.viewMatrix()).move(0,0,-1).turnY(Math.PI).scale(.1);
+      model.hud().scale(1);
+      label.identity().scale(.02);
       label.flag('uTransparentTexture', isClear);
       for (let line = 0 ; line < text.length ; line++) {
          let obj = label.child(line);

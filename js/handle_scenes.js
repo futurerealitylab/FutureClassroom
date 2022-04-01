@@ -19,6 +19,12 @@ export let lcb, rcb;
 
 let enableSceneReloading = false;
 
+window.toggleHeader = () => {
+   window.isHeader = !window.isHeader;
+   header.style.position = 'absolute';
+   header.style.left = window.isHeader ? '8px' : '-1000px';
+}
+
 const chooseFlag = name => {
    if (name == null || name == undefined) {
       return;
@@ -350,6 +356,12 @@ function stopDemo(demo) {
       window.customShader = '';
       window.clay.clayPgm.program = null;
       currentDemo = null;
+   }
+
+   if (anidraw) {
+      anidraw.setIsCodeText(false);
+      anidraw.setCodeText('');
+      anidraw.setDrawFunction(null);
    }
 }
 

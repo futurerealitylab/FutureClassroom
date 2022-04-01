@@ -128,6 +128,33 @@ export function corelink_message(type, data) {
             };
             console.log("init", message);
             break;
+        case "blackboard":
+            message = {
+                type: "blackboard",
+                uid: window.playerid,
+                ts: Date.now(),
+                state: data
+            };
+            console.log("debug blackboard", message);
+            break;
+        case "desktophand":
+            message = {
+                type: "desktophand",
+                uid: window.playerid,
+                ts: Date.now(),
+                state: data
+            };
+            console.log("debug desktophand", message);
+            break;
+        case "sketchobject":
+            message = {
+                type: "sketchobject",
+                uid: window.playerid,
+                ts: Date.now(),
+                state: data
+            };
+            console.log("debug sketchobject", message);
+            break;
         default:
             break;
     }

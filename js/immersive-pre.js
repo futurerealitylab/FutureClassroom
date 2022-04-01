@@ -28,6 +28,7 @@ import { metaroomSyncSender } from "./corelink_handler.js"
 import { Clay } from "./render/core/clay.js";
 import { BoxBuilder } from './render/geometry/box-builder.js';
 import { PbrMaterial } from './render/materials/pbr.js';
+import { setSketchObjectSync } from './util/sketch_object_sync.js'
 window.wsport = 8447;
 window.vr = false;
 window.handtracking = false;
@@ -55,79 +56,79 @@ let gl = null;
 let renderer = null;
 
 let radii = new Float32Array(25);
-let positions = new Float32Array(16*25);
+let positions = new Float32Array(16 * 25);
 // Boxes
 let boxes_left = [];
 let boxes_right = [];
 let boxes = { left: boxes_left, right: boxes_right };
 let indexFingerBoxes = { left: null, right: null };
-const defaultBoxColor = {r: 0.5, g: 0.5, b: 0.5};
-const leftBoxColor = {r: 1, g: 0, b: 1};
-const rightBoxColor = {r: 0, g: 1, b: 1};
+const defaultBoxColor = { r: 0.5, g: 0.5, b: 0.5 };
+const leftBoxColor = { r: 1, g: 0, b: 1 };
+const rightBoxColor = { r: 0, g: 1, b: 1 };
 let interactionBox = null;
 let leftInteractionBox = null;
 let rightInteractionBox = null;
 
 function initModels() {
     window.models = {};
-/*
-    window.models["stereo"] = new Gltf2Node({
-        url: "./media/gltf/stereo/stereo.gltf",
-    });
-    window.models["stereo"].visible = true;
-    */
+    /*
+        window.models["stereo"] = new Gltf2Node({
+            url: "./media/gltf/stereo/stereo.gltf",
+        });
+        window.models["stereo"].visible = true;
+        */
     // global.scene().addNode(window.models['stereo']);
 }
 
 global.scene().standingStats(true);
 // global.scene().addNode(window.models['stereo']);
 
-function createBoxPrimitive(r, g, b) {	
-    let boxBuilder = new BoxBuilder();	
-    boxBuilder.pushCube([0, 0, 0], 1);	
-    let boxPrimitive = boxBuilder.finishPrimitive(renderer);	
-    let boxMaterial = new PbrMaterial();	
-    boxMaterial.baseColorFactor.value = [r, g, b, 1];	
-    return renderer.createRenderPrimitive(boxPrimitive, boxMaterial);	
-  }
+function createBoxPrimitive(r, g, b) {
+    let boxBuilder = new BoxBuilder();
+    boxBuilder.pushCube([0, 0, 0], 1);
+    let boxPrimitive = boxBuilder.finishPrimitive(renderer);
+    let boxMaterial = new PbrMaterial();
+    boxMaterial.baseColorFactor.value = [r, g, b, 1];
+    return renderer.createRenderPrimitive(boxPrimitive, boxMaterial);
+}
 
-  function addBox(x, y, z, r, g, b, offset) {
+function addBox(x, y, z, r, g, b, offset) {
     let boxRenderPrimitive = createBoxPrimitive(r, g, b);
     let boxNode = new Node();
     boxNode.addRenderPrimitive(boxRenderPrimitive);
     // Marks the node as one that needs to be checked when hit testing.
     boxNode.selectable = true;
     return boxNode;
-  }
+}
 
-  function initHands() {
+function initHands() {
     for (const box of boxes_left) {
-      global.scene().removeNode(box);
+        global.scene().removeNode(box);
     }
     for (const box of boxes_right) {
-      global.scene().removeNode(box);
+        global.scene().removeNode(box);
     }
     boxes_left = [];
     boxes_right = [];
     boxes = { left: boxes_left, right: boxes_right };
     if (typeof XRHand !== 'undefined') {
-      for (let i = 0; i <= 24; i++) {
-        const r = .6 + Math.random() * .4;
-        const g = .6 + Math.random() * .4;
-        const b = .6 + Math.random() * .4;
-        boxes_left.push(addBox(0, 0, 0, r, g, b));
-        boxes_right.push(addBox(0, 0, 0, r, g, b));
-      }
+        for (let i = 0; i <= 24; i++) {
+            const r = .6 + Math.random() * .4;
+            const g = .6 + Math.random() * .4;
+            const b = .6 + Math.random() * .4;
+            boxes_left.push(addBox(0, 0, 0, r, g, b));
+            boxes_right.push(addBox(0, 0, 0, r, g, b));
+        }
     }
     if (indexFingerBoxes.left) {
-      global.scene().removeNode(indexFingerBoxes.left);
+        global.scene().removeNode(indexFingerBoxes.left);
     }
     if (indexFingerBoxes.right) {
-      global.scene().removeNode(indexFingerBoxes.right);
+        global.scene().removeNode(indexFingerBoxes.right);
     }
     indexFingerBoxes.left = addBox(0, 0, 0, leftBoxColor.r, leftBoxColor.g, leftBoxColor.b);
     indexFingerBoxes.right = addBox(0, 0, 0, rightBoxColor.r, rightBoxColor.g, rightBoxColor.b);
-  }
+}
 export function initXR() {
     xrButton = new WebXRButton({
         onRequestSession: onRequestSession,
@@ -166,6 +167,7 @@ export function initXR() {
     //     window.wsclient.connect("eye.3dvar.com", window.wsport);
     // }
     setAvatarSync();
+    setSketchObjectSync();
     initModels();
     keyboardInput.initKeyEvents();
 }
@@ -216,7 +218,7 @@ function initGL() {
 
     window.clay = new Clay(gl, gl.canvas);
     window.clay.addEventListenersToCanvas(gl.canvas);
-    
+
     window.anidrawCanvas = document.getElementById('anidrawCanvas');
     window.anidraw = new Anidraw(anidrawCanvas);
 }
@@ -239,15 +241,15 @@ async function onSessionStarted(session) {
 
     session.addEventListener('visibilitychange', e => {
         // remove hand controller while blurred
-        if(e.session.visibilityState === 'visible-blurred') {
-          for (const box of boxes['left']) {
-            global.scene().removeNode(box);
-          }
-          for (const box of boxes['right']) {
-            global.scene().removeNode(box);
-          }
+        if (e.session.visibilityState === 'visible-blurred') {
+            for (const box of boxes['left']) {
+                global.scene().removeNode(box);
+            }
+            for (const box of boxes['right']) {
+                global.scene().removeNode(box);
+            }
         }
-      });
+    });
 
 
     //Each input source should define a primary action. A primary action (which will sometimes be shortened to "select action") is a platform-specific action which responds to the user manipulating it by delivering, in order, the events selectstart, select, and selectend. Each of these events is of type XRInputSourceEvent.
@@ -267,10 +269,12 @@ async function onSessionStarted(session) {
     let glLayer = new XRWebGLLayer(session, gl);
 
     if (session.isImmersive)
-       session.updateRenderState({ baseLayer: glLayer });
+        session.updateRenderState({ baseLayer: glLayer });
     else
-       session.updateRenderState({ baseLayer: glLayer,
-                                   inlineVerticalFieldOfView: .24 });
+        session.updateRenderState({
+            baseLayer: glLayer,
+            inlineVerticalFieldOfView: .24
+        });
 
     let refSpaceType = session.isImmersive ? "local-floor" : "viewer";
     session.requestReferenceSpace(refSpaceType).then((refSpace) => {
@@ -301,7 +305,7 @@ function onSessionEnded(event) {
 }
 
 function updateInputSources(session, frame, refSpace) {
-    
+
     for (let inputSource of session.inputSources) {
         let targetRayPose = frame.getPose(inputSource.targetRaySpace, refSpace);
         let offset = 0;
@@ -333,17 +337,17 @@ function updateInputSources(session, frame, refSpace) {
         // vec3.transformMat4(cursorPos, cursorPos, inputPose.targetRay.transformMatrix);
 
         global.scene().inputRenderer.addCursor(cursorPos);
-        if(inputSource.hand) {
+        if (inputSource.hand) {
             window.handtracking = true;
             for (const box of boxes[inputSource.handedness]) {
                 global.scene().removeNode(box);
             }
-    
+
             let pose = frame.getPose(inputSource.targetRaySpace, refSpace);
             if (pose === undefined) {
                 console.log("no pose");
             }
-    
+
             if (!frame.fillJointRadii(inputSource.hand.values(), radii)) {
                 console.log("no fillJointRadii");
                 continue;
@@ -368,7 +372,7 @@ function updateInputSources(session, frame, refSpace) {
                     scale: jointRadius,
                 });
             }
-                
+
             // // Render a special box for each index finger on each hand	
             // const indexFingerBox = indexFingerBoxes[inputSource.handedness];	
             // global.scene().addNode(indexFingerBox);	
@@ -392,46 +396,46 @@ function updateInputSources(session, frame, refSpace) {
                 ); // let controller = this._controllers[handedness]; // so it is updating actually
                 // ZH: update location
                 // if (window.playerid) {
-                    if (inputSource.handedness == "left") {
-                        window.avatars[window.playerid].leftController.position =
-                            gripPose.transform.position;
-                        window.avatars[window.playerid].leftController.orientation =
-                            gripPose.transform.orientation;
-                        window.avatars[window.playerid].leftController.matrix =
-                            gripPose.transform.matrix;
-                    } else if (inputSource.handedness == "right") {
-                        window.avatars[window.playerid].rightController.position =
-                            gripPose.transform.position;
-                        window.avatars[window.playerid].rightController.orientation =
-                            gripPose.transform.orientation;
-                        window.avatars[window.playerid].rightController.matrix =
-                            gripPose.transform.matrix;
-                    }
+                if (inputSource.handedness == "left") {
+                    window.avatars[window.playerid].leftController.position =
+                        gripPose.transform.position;
+                    window.avatars[window.playerid].leftController.orientation =
+                        gripPose.transform.orientation;
+                    window.avatars[window.playerid].leftController.matrix =
+                        gripPose.transform.matrix;
+                } else if (inputSource.handedness == "right") {
+                    window.avatars[window.playerid].rightController.position =
+                        gripPose.transform.position;
+                    window.avatars[window.playerid].rightController.orientation =
+                        gripPose.transform.orientation;
+                    window.avatars[window.playerid].rightController.matrix =
+                        gripPose.transform.matrix;
+                }
                 // }
             }
         }
         let headPose = frame.getViewerPose(refSpace);
         // if (window.playerid) {
-            window.avatars[window.playerid].headset.position =
-                headPose.transform.position;
-            window.avatars[window.playerid].headset.orientation =
-                headPose.transform.orientation;
-            window.avatars[window.playerid].headset.matrix =
-                headPose.transform.matrix;
+        window.avatars[window.playerid].headset.position =
+            headPose.transform.position;
+        window.avatars[window.playerid].headset.orientation =
+            headPose.transform.orientation;
+        window.avatars[window.playerid].headset.matrix =
+            headPose.transform.matrix;
 
-            for (let source of session.inputSources) {
-                if (!window.handtracking && source.handedness && source.gamepad) {
-                    // if (source.gamepad.buttons[3].pressed) {
-                    //     console.log("source.gamepad.buttons[3].pressed", source.gamepad.buttons[3].pressed);
-                    // }
-                    if (source.handedness == "left")
-                        window.avatars[window.playerid].leftController.updateButtons(source.gamepad.buttons);
-                    if (source.handedness == "right")
-                        window.avatars[window.playerid].rightController.updateButtons(source.gamepad.buttons);
-                    // console.log("leftController", window.avatars[window.playerid].leftController);
-                    // console.log("rightController", window.avatars[window.playerid].rightController)
-                }
+        for (let source of session.inputSources) {
+            if (!window.handtracking && source.handedness && source.gamepad) {
+                // if (source.gamepad.buttons[3].pressed) {
+                //     console.log("source.gamepad.buttons[3].pressed", source.gamepad.buttons[3].pressed);
+                // }
+                if (source.handedness == "left")
+                    window.avatars[window.playerid].leftController.updateButtons(source.gamepad.buttons);
+                if (source.handedness == "right")
+                    window.avatars[window.playerid].rightController.updateButtons(source.gamepad.buttons);
+                // console.log("leftController", window.avatars[window.playerid].leftController);
+                // console.log("rightController", window.avatars[window.playerid].rightController)
             }
+        }
         // }
     }
 }
@@ -556,16 +560,16 @@ function onXRFrame(t, frame) {
     // check if changes per frame
     // send to the server if changes
     // if (window.playerid) {
-        const thisAvatar = window.avatars[window.playerid];
-        for (let source of session.inputSources) {
-            if (source.handedness && source.gamepad) {
-                updateController(thisAvatar, {
-                    handedness: source.handedness,
-                    buttons: source.gamepad.buttons,
-                    axes: source.gamepad.axes
-                });
-            } 
+    const thisAvatar = window.avatars[window.playerid];
+    for (let source of session.inputSources) {
+        if (source.handedness && source.gamepad) {
+            updateController(thisAvatar, {
+                handedness: source.handedness,
+                buttons: source.gamepad.buttons,
+                axes: source.gamepad.axes
+            });
         }
+    }
     // }
 
     if (refSpace == inlineViewerHelper.referenceSpace) {

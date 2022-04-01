@@ -219,9 +219,10 @@ const int nl = 2;                    // NUMBER OF LIGHTS
  uniform float uTexture;
 
  uniform int uMirrored;
- uniform int uProcedure;
  uniform int uTransparentTexture;
  uniform int uVideo;
+ uniform int uAnidraw;
+ uniform int uCustom;
  uniform int uWhitescreen;
 
  in vec3  vAPos, vPos, vNor, vRGB;   // POSITION, NORMAL, COLOR
@@ -304,18 +305,16 @@ float noise(vec3 point) {
        if (uWhitescreen == 0)
           color.g = mix(min(color.g, color.r), color.g, .5 * (2. * color.g - 1.));
 
-       vec4 anidraw = texture(uSampler1, vUV);
-       color = mix(color, anidraw.rgb, anidraw.a);
-       opacity = mix(opacity, 1., anidraw.a);
-
        color = color * color;
     }
 
-    if (uProcedure == 1) {
-       opacity = sign(noise(2. * vAPos + vec3(uTime,uTime,uTime)));
+    if (uAnidraw == 1) {
+       vec4 anidraw = texture(uSampler1, vUV);
+       color = anidraw.rgb;
+       opacity = anidraw.a;
     }
 
-    if (uVideo == 0) {
+    if (uVideo == 0 && uAnidraw == 0 && uCustom == 1) {
 ` + CUSTOM_SHADER_CODE_MARKER + `
     }
 
@@ -368,17 +367,6 @@ export class RenderView {
     } else {
       this.viewTransform = viewTransform;
       this._viewMatrix = viewTransform.inverse.matrix;
-
-      // Alternative view matrix code path
-      /*this._viewMatrix = mat4.create();
-      let q = viewTransform.orientation;
-      let t = viewTransform.position;
-      mat4.fromRotationTranslation(
-          this._viewMatrix,
-          [q.x, q.y, q.z, q.w],
-          [t.x, t.y, t.z]
-      );
-      mat4.invert(this._viewMatrix, this._viewMatrix);*/
     }
   }
 
@@ -949,11 +937,6 @@ export class Renderer {
       this._cameraPositions[i][0] = p.x;
       this._cameraPositions[i][1] = p.y;
       this._cameraPositions[i][2] = p.z;
-
-      /*mat4.invert(inverseMatrix, views[i].viewMatrix);
-      let cameraPosition = this._cameraPositions[i];
-      vec3.set(cameraPosition, 0, 0, 0);
-      vec3.transformMat4(cameraPosition, cameraPosition, inverseMatrix);*/
     }
 
     // Draw each set of render primitives in order
@@ -1198,10 +1181,6 @@ export class Renderer {
 
     if (clay.handsWidget)
        clay.handsWidget.update();
-
-/*
-	Still to do: register labels so they become responsive buttons.
-*/
 
     if (lcb) {
        let updateCB = cb => {

@@ -5,7 +5,7 @@ import { SyncObject, updateObject } from "../util/object-sync.js";
 import { corelink_message } from "../util/corelink_sender.js";
 import { metaroomSyncSender, metaroomWebrtcSender, metaroomEventSender, metaroomInitSender } from "../corelink_handler.js"
 import { left_controller_trigger, right_controller_trigger } from "../util/input_event_handler.js"
-
+import { setEventSketchObjectHandler } from "../util/sketch_object_sync.js"
 export function initSelfAvatar(id) {
   if (!window.avatars) {
     window.avatars = {};
@@ -17,6 +17,8 @@ export function initSelfAvatar(id) {
 }
 
 export function init() {
+  setEventSketchObjectHandler();
+
   window.EventBus.subscribe("test", (json) => {
     console.log("receive from server [test]", json["state"], "at", Date.now());
   });

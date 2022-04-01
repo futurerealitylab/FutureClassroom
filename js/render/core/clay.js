@@ -331,11 +331,13 @@ let drawMesh = (mesh, materialId, isTriangleMesh, textureSrc, flags, customShade
          gl.texImage2D    (gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, videoFromCamera);
          gl.texParameteri (gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
          gl.texParameteri (gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+       }
+       else if (textureSrc == 'anidraw') {
 
-	 // AS WELL AS THE ANIMATED DRAWING PROGRAM
+         // TEXTURE FROM ANIDRAW
 
          textures.anidraw = gl.createTexture();
-         gl.bindTexture   (gl.TEXTURE_2D, textures.anidraw);
+         gl.bindTexture   (gl.TEXTURE_2D, textures[textureSrc]);
          gl.texImage2D    (gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, anidrawCanvas);
          gl.texParameteri (gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
          gl.texParameteri (gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
@@ -377,11 +379,12 @@ let drawMesh = (mesh, materialId, isTriangleMesh, textureSrc, flags, customShade
        gl.activeTexture(gl.TEXTURE0);
        gl.bindTexture(gl.TEXTURE_2D, textures[textureSrc]);
 
-       // VIDEO TEXTURE FROM THE CAMERA NEEDS TO BE REFRESHED REPEATEDLY
+       // VIDEO TEXTURE FROM THE CAMERA AND ANIDRAW NEED TO BE REFRESHED REPEATEDLY
 
-       if (textureSrc == 'camera') {
+       if (textureSrc == 'camera')
           gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, videoFromCamera);
 
+       if (textureSrc == 'anidraw') {
           gl.activeTexture(gl.TEXTURE1);
           gl.bindTexture(gl.TEXTURE_2D, textures.anidraw);
           gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, anidrawCanvas);
@@ -394,11 +397,13 @@ let drawMesh = (mesh, materialId, isTriangleMesh, textureSrc, flags, customShade
       return;
    }
 
-   setUniform('1i', 'uSampler0', 0);                           // SPECIFY TEXTURE INDICES.
+   setUniform('1i', 'uSampler0', 0);                            // SPECIFY TEXTURE INDICES.
    setUniform('1i', 'uSampler1', 1);
-   setUniform('1f', 'uTexture', isTexture(textureSrc)? 1 : 0); // ARE WE RENDERING A TEXTURE?
-   setUniform('1i', 'uVideo', textureSrc == 'camera'); // IS THIS A VIDEO TEXTURE FROM THE CAMERA?
+   setUniform('1f', 'uTexture' , isTexture(textureSrc) ? 1 : 0); // ARE WE RENDERING A TEXTURE?
+   setUniform('1i', 'uVideo'   , textureSrc == 'camera'); // IS THIS A VIDEO TEXTURE FROM THE CAMERA?
+   setUniform('1i', 'uAnidraw' , textureSrc == 'anidraw'); // IS THIS THE ANIDRAW TEXTURE?
    setUniform('1i', 'uMirrored', isMirrored); // IS THE VIDEO TEXTURE MIRRORED?
+   setUniform('1i', 'uCustom'  , window.customShader ? 1 : 0);
 
    if (flags)
       for (let flag in flags)
@@ -410,6 +415,7 @@ let drawMesh = (mesh, materialId, isTriangleMesh, textureSrc, flags, customShade
       
       gl.bufferData(gl.ARRAY_BUFFER, mesh, gl.STATIC_DRAW);
       gl.drawArrays(isTriangleMesh ? gl.TRIANGLES : gl.TRIANGLE_STRIP, 0, mesh.length / VERTEX_SIZE);
+
    } else {
       const drawPrimitiveType = isTriangleMesh ? gl.TRIANGLES : gl.TRIANGLE_STRIP;
       const vertexCount = mesh.length / VERTEX_SIZE;
@@ -1564,6 +1570,8 @@ let S = [], vm, vmi, computeQuadric, activeSet, implicitSurface,
       pgm = window.clay.clayPgm.program;
    }
 
+   this.setAnidrawSlant = slant => anidrawSlant = slant;
+
    this.animate = view => {
       this.updatePgm();
       this.model = model;
@@ -1583,7 +1591,7 @@ let S = [], vm, vmi, computeQuadric, activeSet, implicitSurface,
          if (window.animate)
             window.animate();
 
-	 if (window.isHeader) {
+	 if (! window.isVideo) {
             videoScreen1.scale(0);
             videoScreen2.scale(0);
          }
@@ -1591,8 +1599,18 @@ let S = [], vm, vmi, computeQuadric, activeSet, implicitSurface,
 	    let s = 3.8;
 	    let videoScreen = model._isHUD ? videoScreen1 : videoScreen2;
             videoScreen.setMatrix(cg.mInverse(views[0].viewMatrix))
-	               //.move(0,0,-.3*s).turnY(Math.PI).scale(.3197*s,.2284*s,.001).scale(.227);
 	               .move(0,0,-.3*s).turnY(Math.PI).scale(.3197*s,.2284*s,.001).scale(.181);
+         }
+
+	 if (window.interactMode != 2) {
+            anidrawScreen.scale(0);
+         }
+	 else {
+	    let s = 3.8;
+            anidrawScreen.setMatrix(cg.mInverse(views[0].viewMatrix))
+	                 .move(0,0,-.3*s)
+			 .move(0,-.08*anidrawSlant,0).turnX(-1.2*anidrawSlant)
+			 .turnY(Math.PI).scale(.3197*s,.2284*s,.001).scale(.181);
          }
 
          setUniform('1i', 'uWhitescreen', window.isWhitescreen);
@@ -1675,7 +1693,7 @@ let S = [], vm, vmi, computeQuadric, activeSet, implicitSurface,
 
       // DRAW THE TABLE
 
-      if (isTable && window.isHeader) {
+      if (isTable && window.isVideo) {
          let inches = 0.0254,
              radius     = (70 + 11/16) * inches / 2,
 	     height     = 29 * inches,
@@ -3247,12 +3265,15 @@ function Node(_form) {
    let videoScreen1 = root.add('cube').texture('camera').scale(0);
    this.model = root.add();
    let videoScreen2 = root.add('cube').texture('camera').scale(0);
+   let anidrawScreen = root.add('cube').texture('anidraw');
+   let anidrawSlant = 0;
    let model = this.model;
    model._clay = this;
    let startTime = Date.now() / 1000;
    window.isHeader = true;
    window.isMirrored = true;
    window.isWhitescreen = false;
+   window.isVideo = false;
    window.customShader = '';
 }
 

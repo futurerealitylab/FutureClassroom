@@ -206,11 +206,11 @@ export class InlineViewerHelper {
 
   onKeyUp(e) {
     if (e.keyCode == 32) this._isSpaceKeyDown = false;
+    if (e.key == '~') { window.isWhitescreen = ! window.isWhitescreen; return; }
     if (e.key == 'Shift') this._isShiftKeyDown = false;
     if (e.key == 'Meta') this._isMetaKeyDown = false;
     if (e.key == 'Control') this._isControlKeyDown = false;
 
-    console.log(e.key);
 
     if (e.key == 'Escape' && this._isShiftKeyDown ||
         e.key == 'Escape' && this._isMetaKeyDown ||
@@ -234,12 +234,15 @@ export class InlineViewerHelper {
         window.isMirrored = !window.isMirrored;
         break;
       case keyboardInput.KEY_ESC:
+        window.isVideo = !window.isVideo;
+        break;
+      case keyboardInput.KEY_BACKQUOTE:
+        toggleHeader();
+/*
         window.isHeader = !window.isHeader;
         header.style.position = 'absolute';
         header.style.left = window.isHeader ? '8px' : '-1000px';
-        break;
-      case keyboardInput.KEY_BACKQUOTE:
-        window.isWhitescreen = ! window.isWhitescreen;
+*/
         break;
       case keyboardInput.KEY_Z:
         window.isSlideShow = !window.isSlideShow;
