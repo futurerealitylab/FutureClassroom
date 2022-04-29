@@ -1,5 +1,5 @@
 "use strict";
-import { scenes } from "/js/handle_scenes.js";
+import { scenes } from "../../handle_scenes.js";
 import * as cg from "./cg.js";
 import { controllerMatrix } from "./controllerInput.js";
 import { HandsWidget } from "./handsWidget.js";
