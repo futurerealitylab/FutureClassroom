@@ -10,15 +10,11 @@ import { InlineViewerHelper } from "./util/inline-viewer-helper.js";
 import { QueryArgs } from "./util/query-args.js";
 import { EventBus } from "./primitive/eventbus.js";
 import * as DefaultSystemEvents from "./primitive/event.js";
-// import {
-//     loadAudioSources,
-//     updateAudioSources,
-//     updateAudioNodes,
-//     stereo,
-//     resonance,
-//     audioSources,
-//     pauseAudio,
-// } from "./util/positional-audio.js";
+import {
+    loadAudioSources,
+    pauseAudio,
+    playAudio,
+} from "./util/positional-audio.js";
 import { Client as WSClient } from "./util/websocket-client.js";
 import { updateController } from "./render/core/controllerInput.js";
 import * as keyboardInput from "./util/input_keyboard.js";
@@ -34,6 +30,7 @@ window.vr = false;
 window.handtracking = false;
 window.interactMode = 0;
 window.model = 0;
+window.spatialAudio = false;
 
 // If requested, use the polyfill to provide support for mobile devices
 // and devices which only support WebVR.
@@ -148,7 +145,7 @@ export function initXR() {
         });
 
         // Load multiple audio sources.
-        // loadAudioSources(global.scene());
+        loadAudioSources(global.scene());
 
         navigator.xr.requestSession("inline").then(onSessionStarted);
     } else {
@@ -300,7 +297,7 @@ function onSessionEnded(event) {
         xrButton.setSession(null);
 
         // Stop the audio playback when we exit XR.
-        // pauseAudio();
+        pauseAudio();
     }
 }
 
@@ -555,6 +552,7 @@ function onXRFrame(t, frame) {
     updateAvatars();
 
     updateObjects();
+    if(window.spatialAudio) playAudio();
 
     // ZH: save previous "source.gamepad.buttons" for two controllers,
     // check if changes per frame

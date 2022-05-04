@@ -8,7 +8,7 @@ export function setSketchObjectSync() {
             var dataInfo = { "k": "v" }
             var msg = corelink_message("sketchobject", dataInfo);
             corelink.send(metaroomSyncSender, msg);
-            console.log("corelink.send", msg);
+            // console.log("corelink.send", msg);
         }
     }, 100);
 }

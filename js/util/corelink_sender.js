@@ -153,7 +153,7 @@ export function corelink_message(type, data) {
                 ts: Date.now(),
                 state: data
             };
-            console.log("debug sketchobject", message);
+            // console.log("debug sketchobject", message);
             break;
         default:
             break;
